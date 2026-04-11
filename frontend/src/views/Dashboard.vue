@@ -66,7 +66,10 @@ const openApp = (appId: any) => {
     <header class="top-bar glass">
       <div class="top-left">
         <button class="menu-btn"><Grid :size="20" /></button>
-        <span class="os-name">NubeOS</span>
+        <div class="logo-container">
+          <img src="../assets/logo.png" alt="Logo" class="top-logo" />
+          <span class="os-name">NubeOS</span>
+        </div>
       </div>
       
       <div class="top-right">
@@ -176,6 +179,18 @@ const openApp = (appId: any) => {
 }
 
 .os-name { font-weight: 800; font-size: 1.1rem; }
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.top-logo {
+  height: 28px;
+  width: auto;
+  object-fit: contain;
+}
 
 .user-pill {
   display: flex;

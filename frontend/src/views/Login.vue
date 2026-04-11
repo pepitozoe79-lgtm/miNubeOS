@@ -2,7 +2,7 @@
 import { ref } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
-import { LogIn, ShieldCheck } from 'lucide-vue-next';
+import { LogIn } from 'lucide-vue-next';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -25,7 +25,7 @@ const handleLogin = async () => {
     <div class="glass login-card fade-in">
       <div class="header">
         <div class="logo-box">
-          <ShieldCheck :size="40" color="white" />
+          <img src="../assets/logo.png" alt="NubeOS Logo" class="login-logo" />
         </div>
         <h1>NubeOS</h1>
         <p>Tu nube personal, simplificada.</p>
@@ -87,15 +87,16 @@ const handleLogin = async () => {
 }
 
 .logo-box {
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 96px;
+  height: 96px;
   margin: 0 auto 1.5rem;
-  box-shadow: 0 8px 16px rgba(99, 102, 241, 0.4);
+}
+
+.login-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.3));
 }
 
 h1 {
