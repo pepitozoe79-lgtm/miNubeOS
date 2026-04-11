@@ -68,6 +68,23 @@ const stopApp = async (id: string) => {
   }
 };
 
+const installingApp = ref<string | null>(null);
+
+const installApp = async (id: string) => {
+  if (installingApp.value) return;
+  installingApp.value = id;
+  try {
+    const res = await axios.post(`/api/apps/install/${id}`);
+    alert(res.data.message);
+    activeTab.value = 'installed';
+    fetchData();
+  } catch (err: any) {
+    alert(err.response?.data?.error || 'Error al instalar app');
+  } finally {
+    installingApp.value = null;
+  }
+};
+
 // Error handle fix again
 </script>
 
@@ -150,8 +167,17 @@ const stopApp = async (id: string) => {
           <h3>{{ app.name }}</h3>
           <p>{{ app.description }}</p>
         </div>
-        <button class="install-btn">
-          <Download :size="18"/> <span>Instalar</span>
+        <button 
+          @click="installApp(app.id)" 
+          class="install-btn"
+          :disabled="installingApp === app.id"
+        >
+          <template v-if="installingApp === app.id">
+            <RefreshCw :size="18" class="spinning"/> <span>Instalando...</span>
+          </template>
+          <template v-else>
+            <Download :size="18"/> <span>Instalar</span>
+          </template>
         </button>
       </div>
     </div>

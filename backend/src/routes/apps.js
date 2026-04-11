@@ -18,6 +18,16 @@ router.get('/store', authMiddleware, (req, res) => {
   res.json(dockerService.getAvailableApps());
 });
 
+// Install App
+router.post('/install/:id', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    await dockerService.installApp(req.params.id);
+    res.json({ message: 'App instalada e iniciada con éxito' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Start App
 router.post('/:id/start', authMiddleware, adminMiddleware, async (req, res) => {
   try {
