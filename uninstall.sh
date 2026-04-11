@@ -21,12 +21,6 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-read -p "¿Estás seguro de que quieres eliminar NubeOS y todos sus datos? (s/n): " confirm < /dev/tty
-if [[ $confirm != [sS] ]]; then
-    echo "Desinstalación cancelada."
-    exit 0
-fi
-
 # 2. Detener y eliminar servicios
 echo -e "${BLUE}[1/3] Deteniendo y eliminando servicios de NubeOS...${NC}"
 systemctl stop nubeos-backend || true
