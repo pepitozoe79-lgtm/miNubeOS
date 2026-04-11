@@ -163,23 +163,28 @@ const deleteUser = async (id: number) => {
 };
 
 const isUpdating = ref(false);
+const showUpdateConfirm = ref(false);
+const updateResult = ref<{ success: boolean; message: string; details?: string; path?: string } | null>(null);
 
 const performUpdate = async () => {
-  if (!confirm('¿Deseas buscar actualizaciones en GitHub y aplicarlas ahora?')) return;
-  
+  showUpdateConfirm.value = false;
   isUpdating.value = true;
+  updateResult.value = null;
+  
   try {
     const res = await axios.post('/api/system/update');
-    alert(res.data.message + '\n\n' + res.data.output);
-    // Optionally reload the page if needed
-    if (res.data.output.includes('Updating')) {
-       window.location.reload();
-    }
+    updateResult.value = {
+      success: true,
+      message: res.data.message,
+      details: res.data.output
+    };
   } catch (err: any) {
-    const errorMsg = err.response?.data?.details ? 
-      `${err.response.data.error}\nDetalles: ${err.response.data.details}\nRuta: ${err.response.data.path}` : 
-      'Error al actualizar';
-    alert(errorMsg);
+    updateResult.value = {
+      success: false,
+      message: err.response?.data?.error || 'Error al actualizar',
+      details: err.response?.data?.details,
+      path: err.response?.data?.path
+    };
   } finally {
     isUpdating.value = false;
   }
@@ -192,7 +197,7 @@ const handleItemClick = (id: string) => {
     activeSubView.value = 'user';
     fetchUsers();
   } else if (id === 'update') {
-    performUpdate();
+    showUpdateConfirm.value = true;
   }
 };
 </script>
@@ -363,6 +368,44 @@ const handleItemClick = (id: string) => {
         <span class="loader-subtext">Por favor, no cierres esta ventana.</span>
       </div>
     </div>
+
+    <!-- Update Confirmation Modal -->
+    <div v-if="showUpdateConfirm" class="modal-overlay">
+      <div class="modal glass">
+        <div class="align-center">
+          <RefreshCw :size="48" class="icon-primary mb-1" />
+          <h3>Actualizar Sistema</h3>
+        </div>
+        <p class="modal-text">¿Deseas buscar actualizaciones en el repositorio de GitHub y aplicarlas ahora? El sistema se sincronizará automáticamente.</p>
+        <div class="modal-actions">
+          <button @click="showUpdateConfirm = false" class="btn-cancel">Cancelar</button>
+          <button @click="performUpdate" class="btn-confirm">Actualizar Ahora</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Update Result Modal -->
+    <div v-if="updateResult" class="modal-overlay">
+      <div class="modal glass">
+        <div class="align-center">
+          <component 
+            :is="updateResult.success ? ShieldCheck : Unplug" 
+            :size="48" 
+            :class="updateResult.success ? 'text-success' : 'text-danger'"
+            class="mb-1"
+          />
+          <h3>{{ updateResult.success ? '¡Actualizado!' : 'Error de Actualización' }}</h3>
+        </div>
+        <div class="result-details">
+          <p class="result-msg">{{ updateResult.message }}</p>
+          <pre v-if="updateResult.details" class="details-box">{{ updateResult.details }}</pre>
+          <p v-if="updateResult.path" class="path-info">Ruta: <code>{{ updateResult.path }}</code></p>
+        </div>
+        <div class="modal-actions">
+          <button @click="updateResult = null" class="btn-confirm">Entendido</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -513,4 +556,13 @@ td { padding: 1rem; font-size: 0.85rem; border-top: 1px solid #e2e8f0; }
 .spin { animation: spin 2s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .loader-subtext { font-size: 0.75rem; color: #94a3b8; margin-top: -0.5rem; }
+
+.mb-1 { margin-bottom: 1rem; }
+.modal-text { font-size: 0.9rem; color: #475569; line-height: 1.5; text-align: center; }
+.result-details { display: flex; flex-direction: column; gap: 0.75rem; max-height: 300px; overflow-y: auto; }
+.result-msg { font-weight: 600; color: #1e293b; text-align: center; }
+.details-box { background: #f1f5f9; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.75rem; color: #334155; white-space: pre-wrap; word-break: break-all; border: 1px solid #e2e8f0; }
+.path-info { font-size: 0.7rem; color: #64748b; }
+.text-success { color: #10b981; }
+.text-danger { color: #ef4444; }
 </style>
