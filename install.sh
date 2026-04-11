@@ -45,14 +45,10 @@ else
     echo -e "${GREEN}[2/6] Docker ya está instalado. Asegurando permisos...${NC}"
 fi
 
-# 4. Instalar Node.js (usando NodeSource para versión reciente)
-if ! command -v node &> /dev/null; then
-    echo -e "${GREEN}[3/6] Instalando Node.js (v20)...${NC}"
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-    apt install -y nodejs
-else
-    echo -e "${GREEN}[3/6] Node.js ya está instalado ($(node -v)).${NC}"
-fi
+# 4. Instalar/Actualizar Node.js (v20 requerido por Vite)
+echo -e "${GREEN}[3/6] Asegurando Node.js v20...${NC}"
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
 
 # 5. Clonar el repositorio
 INSTALL_DIR="/opt/nubeos"
