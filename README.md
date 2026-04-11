@@ -2,6 +2,7 @@
 
 NubeOS es un sistema de gestión de archivos y aplicaciones en la nube para uso personal (NAS casero). Proporciona una interfaz de escritorio intuitiva basada en la web para gestionar archivos, instalar aplicaciones y monitorear el sistema desde cualquier lugar de tu red local.
 
+![NubeOS Dashboard](https://github.com/elpato001/NubeOs/blob/main/frontend/src/assets/logo.png?raw=true)
 ![NubeOS Dashboard](https://raw.githubusercontent.com/elpato001/NubeOs/main/screenshots/desktop_preview.png)
 
 ## 🚀 Características
