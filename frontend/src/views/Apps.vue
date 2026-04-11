@@ -27,30 +27,30 @@ interface StoreApp {
   icon: string;
 }
 
-const activeTab = ref<'installed' | 'store'>('installed');
-const installedApps = ref<AppContainer[]>([]);
-const storeApps = ref<StoreApp[]>([]);
-const loading = ref(false);
+const allApps = ref<any[]>([]);
 
 const fetchData = async () => {
   loading.value = true;
   try {
-    // Fetch installed apps
-    try {
-      const inst = await axios.get('/api/apps/installed');
-      installedApps.value = inst.data;
-    } catch (err) {
-      console.error('Error fetching installed apps:', err);
-      installedApps.value = [];
-    }
+    const [instRes, storeRes] = await Promise.all([
+      axios.get('/api/apps/installed').catch(() => ({ data: [] })),
+      axios.get('/api/apps/store').catch(() => ({ data: [] }))
+    ]);
 
-    // Fetch store apps
-    try {
-      const store = await axios.get('/api/apps/store');
-      storeApps.value = store.data;
-    } catch (err) {
-      console.error('Error fetching store apps:', err);
-    }
+    const installed = instRes.data;
+    const store = storeRes.data;
+
+    allApps.value = store.map((sApp: any) => {
+      const isInstalled = installed.find((iApp: any) => 
+        iApp.name === `nubeos-${sApp.id}` || iApp.name === sApp.id
+      );
+      return {
+        ...sApp,
+        container: isInstalled || null
+      };
+    });
+  } catch (err) {
+    console.error('Error fetching data:', err);
   } finally {
     loading.value = false;
   }
@@ -101,22 +101,7 @@ const installApp = async (id: string) => {
     <header class="view-header">
       <div class="title-group">
         <h1>Centro de Aplicaciones</h1>
-        <p>Gestiona tus servicios y herramientas.</p>
-      </div>
-
-      <div class="tab-group glass">
-        <button 
-          @click="activeTab = 'installed'" 
-          :class="{ active: activeTab === 'installed' }"
-        >
-          <LayoutGrid :size="18"/> <span>Instaladas</span>
-        </button>
-        <button 
-          @click="activeTab = 'store'" 
-          :class="{ active: activeTab === 'store' }"
-        >
-          <ShoppingBag :size="18"/> <span>Tienda</span>
-        </button>
+        <p>Activa y gestiona los servicios integrados en tu NubeOS.</p>
       </div>
 
       <button @click="fetchData" class="refresh-btn" :class="{ spinning: loading }">
@@ -124,69 +109,60 @@ const installApp = async (id: string) => {
       </button>
     </header>
 
-    <div v-if="activeTab === 'installed'" class="apps-grid">
-      <div v-for="app in installedApps" :key="app.id" class="app-card glass">
+    <div class="apps-grid">
+      <div v-for="app in allApps" :key="app.id" class="app-card glass" :class="{ inactive: !app.container }">
         <div class="app-header">
-          <div class="app-icon default">🐳</div>
+          <div class="app-icon">{{ app.icon }}</div>
           <div class="app-info">
-            <h3>{{ app.name }}</h3>
-            <span class="image-tag">{{ app.image }}</span>
-          </div>
-          <div class="status-badge" :class="app.status">
-            {{ app.status }}
+            <div class="title-row">
+              <h3>{{ app.name }}</h3>
+              <div v-if="app.container" class="status-badge" :class="app.container.status">
+                {{ app.container.status === 'running' ? 'Activa' : 'Detenida' }}
+              </div>
+              <div v-else class="status-badge inactive">Inactiva</div>
+            </div>
+            <p class="app-desc">{{ app.description }}</p>
           </div>
         </div>
         
-        <div class="app-meta">
-          <span>{{ app.state }}</span>
-        </div>
-
         <div class="app-actions">
+          <!-- Not Installed Action -->
           <button 
-            v-if="app.status !== 'running'" 
-            @click="startApp(app.id)"
-            class="action-btn start"
+            v-if="!app.container" 
+            @click="installApp(app.id)" 
+            class="action-btn activate"
+            :disabled="installingApp === app.id"
           >
-            <Play :size="16"/> <span>Iniciar</span>
+            <template v-if="installingApp === app.id">
+              <RefreshCw :size="16" class="spinning"/> <span>Activando...</span>
+            </template>
+            <template v-else>
+              <Download :size="16"/> <span>Activar App</span>
+            </template>
           </button>
-          <button 
-            v-else 
-            @click="stopApp(app.id)"
-            class="action-btn stop"
-          >
-            <Square :size="16"/> <span>Detener</span>
-          </button>
-          
-          <button class="action-btn open">
-            <ExternalLink :size="16"/> <span>Abrir</span>
-          </button>
-        </div>
-      </div>
 
-      <div v-if="installedApps.length === 0" class="empty-state">
-        <p>No tienes apps instaladas.</p>
-      </div>
-    </div>
-
-    <div v-else class="store-grid">
-      <div v-for="app in storeApps" :key="app.id" class="store-card glass">
-        <div class="store-icon">{{ app.icon }}</div>
-        <div class="store-info">
-          <h3>{{ app.name }}</h3>
-          <p>{{ app.description }}</p>
-        </div>
-        <button 
-          @click="installApp(app.id)" 
-          class="install-btn"
-          :disabled="installingApp === app.id"
-        >
-          <template v-if="installingApp === app.id">
-            <RefreshCw :size="18" class="spinning"/> <span>Instalando...</span>
-          </template>
+          <!-- Installed Actions -->
           <template v-else>
-            <Download :size="18"/> <span>Instalar</span>
+            <button 
+              v-if="app.container.status !== 'running'" 
+              @click="startApp(app.container.id)"
+              class="action-btn start"
+            >
+              <Play :size="16"/> <span>Reanudar</span>
+            </button>
+            <button 
+              v-else 
+              @click="stopApp(app.container.id)"
+              class="action-btn stop"
+            >
+              <Square :size="16"/> <span>Desactivar</span>
+            </button>
+            
+            <button class="action-btn open">
+              <ExternalLink :size="16"/> <span>Abrir</span>
+            </button>
           </template>
-        </button>
+        </div>
       </div>
     </div>
   </div>
@@ -252,37 +228,43 @@ const installApp = async (id: string) => {
 
 .app-header {
   display: flex;
-  align-items: flex-start;
-  gap: 1rem;
+  align-items: center;
+  gap: 1.25rem;
 }
 
-.app-icon.default {
-  width: 48px;
-  height: 48px;
-  background: #1e293b;
-  border-radius: 12px;
+.app-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 2rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border: 1px solid rgba(255,255,255,0.1);
 }
 
 .app-info { flex: 1; }
-.app-info h3 { font-size: 1.1rem; margin-bottom: 0.25rem; }
-.image-tag { font-size: 0.75rem; color: var(--text-muted); font-family: monospace; }
+.title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.25rem; }
+.app-info h3 { font-size: 1.1rem; font-weight: 700; color: white; }
+.app-desc { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
 
 .status-badge {
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   text-transform: uppercase;
   font-weight: 800;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  padding: 0.2rem 0.6rem;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
 }
 
-.status-badge.running { background: rgba(34, 197, 94, 0.1); color: #4ade80; }
-.status-badge.exited { background: rgba(239, 68, 68, 0.1); color: #f87171; }
+.status-badge.running { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+.status-badge.exited { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+.status-badge.inactive { background: rgba(255, 255, 255, 0.05); color: #94a3b8; }
 
-.app-meta { font-size: 0.85rem; color: var(--text-muted); }
+.app-card.inactive { opacity: 0.7; filter: grayscale(0.5); border: 1px dashed rgba(255,255,255,0.1); }
+.app-card.inactive:hover { opacity: 1; filter: none; border: 1px solid var(--primary); }
 
 .app-actions {
   display: flex;
@@ -301,9 +283,10 @@ const installApp = async (id: string) => {
   padding: 0.6rem;
 }
 
+.action-btn.activate { background: var(--primary); color: white; border: none; font-weight: 700; }
 .action-btn.start { background: rgba(34, 197, 94, 0.1); color: #4ade80; }
 .action-btn.stop { background: rgba(239, 68, 68, 0.1); color: #f87171; }
-.action-btn.open { background: rgba(255, 255, 255, 0.05); color: white; }
+.action-btn.open { background: rgba(255, 255, 255, 0.05); color: white; border: 1px solid rgba(255,255,255,0.1); }
 
 /* Store Card */
 .store-card {
