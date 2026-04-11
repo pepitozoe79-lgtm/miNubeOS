@@ -24,20 +24,35 @@ fi
 
 # 2. Actualizar sistema e instalar dependencias básicas
 echo -e "${GREEN}[1/6] Actualizando sistema e instalando dependencias básicas...${NC}"
-apt update && apt install -y curl git build-essential
+apt update && apt install -y curl git build-essential ca-certificates gnupg lsb-release
 
-# 3. Instalar Node.js si no existe (usando NodeSource para versión reciente)
+# 3. Instalar Docker si no existe
+if ! command -v docker &> /dev/null; then
+    echo -e "${GREEN}[2/6] Instalando Docker Engine...${NC}"
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
+      $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+    apt update && apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+    systemctl enable docker
+    systemctl start docker
+else
+    echo -e "${GREEN}[2/6] Docker ya está instalado. Asegurando permisos...${NC}"
+fi
+
+# 4. Instalar Node.js (usando NodeSource para versión reciente)
 if ! command -v node &> /dev/null; then
-    echo -e "${GREEN}[2/6] Instalando Node.js (v18)...${NC}"
+    echo -e "${GREEN}[3/6] Instalando Node.js (v18)...${NC}"
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
     apt install -y nodejs
 else
-    echo -e "${GREEN}[2/6] Node.js ya está instalado ($(node -v)).${NC}"
+    echo -e "${GREEN}[3/6] Node.js ya está instalado ($(node -v)).${NC}"
 fi
 
-# 4. Clonar el repositorio
+# 5. Clonar el repositorio
 INSTALL_DIR="/opt/nubeos"
-echo -e "${GREEN}[3/6] Clonando NubeOS en $INSTALL_DIR...${NC}"
+echo -e "${GREEN}[4/6] Clonando NubeOS en $INSTALL_DIR...${NC}"
 if [ -d "$INSTALL_DIR" ]; then
     echo -e "${BLUE}Ya existe una instalación previa. Actualizando...${NC}"
     cd $INSTALL_DIR && git pull origin main
@@ -45,14 +60,14 @@ else
     git clone https://github.com/elpato001/NubeOs.git $INSTALL_DIR
 fi
 
-# 5. Instalar dependencias del proyecto
-echo -e "${GREEN}[4/6] Instalando dependencias de Backend y Frontend...${NC}"
+# 6. Instalar dependencias del proyecto
+echo -e "${GREEN}[5/6] Instalando dependencias de Backend y Frontend...${NC}"
 cd $INSTALL_DIR/backend && npm install
 cd $INSTALL_DIR/frontend && npm install
 npm run build # Construir el frontend para producción
 
-# 6. Configurar servicios Systemd
-echo -e "${GREEN}[5/6] Configurando servicios del sistema...${NC}"
+# 7. Configurar servicios Systemd
+echo -e "${GREEN}[6/6] Configurando servicios del sistema...${NC}"
 
 # Servicio para el Backend
 cat <<EOF > /etc/systemd/system/nubeos-backend.service
