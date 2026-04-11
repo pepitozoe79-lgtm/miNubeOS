@@ -176,7 +176,10 @@ const performUpdate = async () => {
        window.location.reload();
     }
   } catch (err: any) {
-    alert(err.response?.data?.error || 'Error al actualizar');
+    const errorMsg = err.response?.data?.details ? 
+      `${err.response.data.error}\nDetalles: ${err.response.data.details}\nRuta: ${err.response.data.path}` : 
+      'Error al actualizar';
+    alert(errorMsg);
   } finally {
     isUpdating.value = false;
   }

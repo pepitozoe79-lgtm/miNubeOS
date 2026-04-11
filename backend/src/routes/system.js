@@ -32,15 +32,16 @@ router.post('/update', authMiddleware, adminMiddleware, async (req, res) => {
   const { exec } = require('child_process');
   const path = require('path');
   
-  // The git root is the parent folder of 'backend'
-  const gitRoot = path.join(__dirname, '../../');
+  // The git root is the parent folder of 'backend' (3 levels up from routes/system.js)
+  const gitRoot = path.join(__dirname, '../../../');
   
   exec('git pull origin main', { cwd: gitRoot }, (error, stdout, stderr) => {
     if (error) {
       console.error(`Error de actualización: ${error.message}`);
       return res.status(500).json({ 
         error: 'Error al actualizar desde GitHub', 
-        details: stderr 
+        details: stderr || error.message,
+        path: gitRoot 
       });
     }
     
