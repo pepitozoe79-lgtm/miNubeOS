@@ -63,6 +63,9 @@ fi
 # 6. Instalar dependencias del proyecto
 echo -e "${GREEN}[5/6] Instalando dependencias de Backend y Frontend...${NC}"
 cd $INSTALL_DIR/backend && npm install
+# Asegurar permisos para la base de datos
+mkdir -p $INSTALL_DIR/data/db
+chmod -R 777 $INSTALL_DIR/data # Permisos amplios para evitar bloqueos en Ubuntu
 
 cd $INSTALL_DIR/frontend && npm install
 npm run build # Construir el frontend para producción
