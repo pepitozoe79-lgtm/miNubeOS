@@ -65,8 +65,8 @@ export const useAuthStore = defineStore('auth', {
         this.cachedIsConfigured = response.data.isConfigured;
         return this.cachedIsConfigured;
       } catch (err) {
-        console.error('Error checking setup status:', err);
-        return true; // Assume configured on error to avoid loops
+        console.warn('No se pudo verificar el estado de configuración (posiblemente el backend esté iniciando):', err);
+        return false; // Cambiado a false: si hay error, mejor mostrar el asistente
       }
     },
 
