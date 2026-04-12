@@ -66,7 +66,7 @@ router.post('/setup', (req, res) => {
     res.json({ message: 'Administrador creado correctamente' });
   } catch (error) {
     console.error('Error durante el setup inicial:', error);
-    res.status(500).json({ error: 'Error en la base de datos: ' + (error.message || 'Error desconocido') });
+    res.status(500).json({ error: `Error en el servidor: ${error.message}` });
   }
 });
 
@@ -78,7 +78,8 @@ router.get('/status', (req, res) => {
       isConfigured: count > 0
     });
   } catch (error) {
-    res.status(500).json({ error: 'Error al verificar el estado del sistema' });
+    console.error('Error al verificar el estado del sistema:', error);
+    res.status(500).json({ error: `Error al verificar estado: ${error.message}` });
   }
 });
 

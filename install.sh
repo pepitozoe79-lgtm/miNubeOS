@@ -133,5 +133,5 @@ echo
 echo -e "Puedes gestionar los servicios con:"
 echo -e "  systemctl status nubeos-backend"
 echo -e "  systemctl status nubeos-frontend"
-echo.
+echo
 echo -e "${BLUE}¡Gracias por usar NubeOS!${NC}"
