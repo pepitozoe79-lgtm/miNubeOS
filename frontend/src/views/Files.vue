@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, nextTick } from 'vue';
 import { useFileStore } from '../stores/files';
 import type { FileItem } from '../stores/files';
 import { 
@@ -32,6 +32,9 @@ const viewMode = ref<'grid' | 'list'>('grid');
 const previewFile = ref<any>(null);
 const propertiesItem = ref<FileItem | null>(null);
 const contextMenu = ref({ visible: false, x: 0, y: 0, item: null as FileItem | null });
+const renamingItem = ref<FileItem | null>(null);
+const newNameValue = ref('');
+const renameInput = ref<HTMLInputElement | null>(null);
 
 onMounted(() => {
   fileStore.fetchFiles();
@@ -79,11 +82,37 @@ const deleteItem = (item: FileItem) => {
   }
 };
 
-const renameItem = (item: FileItem) => {
-  const newName = prompt('Nuevo nombre:', item.name);
-  if (newName && newName !== item.name) {
-    fileStore.renameItem(item.name, newName);
+const startRename = (item: FileItem) => {
+  renamingItem.value = item;
+  newNameValue.value = item.name;
+  nextTick(() => {
+    if (renameInput.value) {
+      renameInput.value.focus();
+      // Select name without extension if it's a file
+      if (!item.isDirectory && item.name.includes('.')) {
+        const dotIndex = item.name.lastIndexOf('.');
+        renameInput.value.setSelectionRange(0, dotIndex);
+      } else {
+        renameInput.value.select();
+      }
+    }
+  });
+};
+
+const confirmRename = async () => {
+  if (!renamingItem.value) return;
+  const oldName = renamingItem.value.name;
+  const newName = newNameValue.value.trim();
+  
+  if (newName && newName !== oldName) {
+    await fileStore.renameItem(oldName, newName);
   }
+  
+  renamingItem.value = null;
+};
+
+const cancelRename = () => {
+  renamingItem.value = null;
 };
 
 const showProperties = (item: FileItem) => {
@@ -231,7 +260,8 @@ const handleDblClick = (item: any) => {
         class="file-item glass"
         :class="{ 
           selected: selectedItems.includes(item.name),
-          'is-cut': fileStore.clipboard.item?.name === item.name && fileStore.clipboard.type === 'cut'
+          'is-cut': fileStore.clipboard.item?.name === item.name && fileStore.clipboard.type === 'cut',
+          'is-renaming': renamingItem?.name === item.name
         }"
         @click="toggleSelect(item.name)"
         @dblclick="handleDblClick(item)"
@@ -246,7 +276,17 @@ const handleDblClick = (item: any) => {
           <File v-else :size="48" color="#cbd5e1" />
         </div>
         <div class="info">
-          <span class="name">{{ item.name }}</span>
+          <input 
+            v-if="renamingItem?.name === item.name"
+            v-model="newNameValue"
+            class="rename-input"
+            @keyup.enter="confirmRename"
+            @keyup.esc="cancelRename"
+            @blur="confirmRename"
+            ref="renameInput"
+            @click.stop
+          />
+          <span v-else class="name">{{ item.name }}</span>
           <span class="meta" v-if="!item.isDirectory">{{ formatSize(item.size) }}</span>
         </div>
       </div>
@@ -273,7 +313,7 @@ const handleDblClick = (item: any) => {
             <Scissors :size="14"/> Cortar
           </button>
           <div class="divider"></div>
-          <button @click="renameItem(contextMenu.item!)">
+          <button @click="startRename(contextMenu.item!)">
             <Edit2 :size="14"/> Renombrar
           </button>
           <button @click="deleteItem(contextMenu.item!)" class="danger">
@@ -381,6 +421,18 @@ const handleDblClick = (item: any) => {
 .info { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; width: 100%; }
 .name { font-size: 0.82rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
 .meta { font-size: 0.7rem; color: var(--text-muted); }
+
+.rename-input {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--primary);
+  border-radius: 4px;
+  color: white;
+  padding: 2px 4px;
+  font-size: 0.82rem;
+  text-align: center;
+}
+.rename-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3); }
 
 /* Context Menu Style */
 .context-menu {
