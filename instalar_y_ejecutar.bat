@@ -63,6 +63,9 @@ echo ======================================================
 echo   NubeOS se esta iniciando...
 echo   Frontend: http://localhost:5173
 echo   Backend:  http://localhost:3000
+echo.
+echo   Si es la primera vez que inicias NubeOS, sigue el
+echo   asistente en el navegador para crear tu cuenta.
 echo ======================================================
 echo.
 echo Puedes cerrar esta ventana ahora. Presiona cualquier tecla para salir.
