@@ -53,7 +53,7 @@ if (fs.existsSync(frontendDistPath)) {
 
   // SPA Fallback: For any request that doesn't match an API route or
   // static file, serve index.html so Vue Router can handle client-side routing
-  app.get('*', (req, res) => {
+  app.get('{*path}', (req, res) => {
     res.sendFile(path.join(frontendDistPath, 'index.html'));
   });
 } else {
