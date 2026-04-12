@@ -234,4 +234,60 @@ router.get('/download', authMiddleware, (req, res) => {
   }
 });
 
+// 7. Rename item
+router.post('/rename', authMiddleware, async (req, res) => {
+  try {
+    const { path: relPath, oldName, newName } = req.body;
+    const oldPath = getSafePath(req.user.username, path.join(relPath || '', oldName));
+    const newPath = getSafePath(req.user.username, path.join(relPath || '', newName));
+
+    if (fs.existsSync(newPath)) {
+      return res.status(400).json({ error: 'Ya existe un archivo con ese nombre' });
+    }
+
+    fs.renameSync(oldPath, newPath);
+    res.json({ message: 'Elemento renombrado con éxito' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 8. Copy item
+router.post('/copy', authMiddleware, async (req, res) => {
+  try {
+    const { fromPath, toPath, name } = req.body;
+    const source = getSafePath(req.user.username, path.join(fromPath || '', name));
+    const destination = getSafePath(req.user.username, path.join(toPath || '', name));
+
+    if (fs.existsSync(destination)) {
+      return res.status(400).json({ error: 'Ya existe un archivo con ese nombre en el destino' });
+    }
+
+    const fsExtra = require('fs-extra');
+    await fsExtra.copy(source, destination);
+    res.json({ message: 'Elemento copiado con éxito' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 9. Move item (Cut/Paste)
+router.post('/move', authMiddleware, async (req, res) => {
+  try {
+    const { fromPath, toPath, name } = req.body;
+    const source = getSafePath(req.user.username, path.join(fromPath || '', name));
+    const destination = getSafePath(req.user.username, path.join(toPath || '', name));
+
+    if (fs.existsSync(destination)) {
+      return res.status(400).json({ error: 'Ya existe un archivo con ese nombre en el destino' });
+    }
+
+    const fsExtra = require('fs-extra');
+    await fsExtra.move(source, destination);
+    res.json({ message: 'Elemento movido con éxito' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

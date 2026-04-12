@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
-import { useFileStore } from '../stores/files';
+import { onMounted, onUnmounted, ref, computed } from 'vue';
+import { useFileStore, FileItem } from '../stores/files';
 import { 
   Folder, 
   File, 
@@ -16,18 +16,30 @@ import {
   List,
   Eye,
   Download,
-  X
+  X,
+  Copy,
+  Scissors,
+  Edit2,
+  Info,
+  ClipboardPaste
 } from 'lucide-vue-next';
 
 const fileStore = useFileStore();
 const selectedItems = ref<string[]>([]);
 const viewMode = ref<'grid' | 'list'>('grid');
 
-// Preview state
+// UI States
 const previewFile = ref<any>(null);
+const propertiesItem = ref<FileItem | null>(null);
+const contextMenu = ref({ visible: false, x: 0, y: 0, item: null as FileItem | null });
 
 onMounted(() => {
   fileStore.fetchFiles();
+  window.addEventListener('click', closeContextMenu);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeContextMenu);
 });
 
 const navigateTo = (folderName: string) => {
@@ -47,7 +59,7 @@ const handleFileUpload = (event: Event) => {
   const target = event.target as HTMLInputElement;
   if (target.files && target.files.length > 0) {
     fileStore.uploadFiles(target.files);
-    target.value = ''; // Reset so same file can be uploaded again
+    target.value = '';
   }
 };
 
@@ -61,12 +73,49 @@ const createFolder = () => {
   if (name) fileStore.createFolder(name);
 };
 
-const deleteSelected = () => {
-  if (selectedItems.value.length === 0) return;
-  if (confirm(`¿Eliminar ${selectedItems.value.length} elementos?`)) {
-    fileStore.deleteItems(selectedItems.value);
-    selectedItems.value = [];
+const deleteItem = (item: FileItem) => {
+  if (confirm(`¿Eliminar "${item.name}"?`)) {
+    fileStore.deleteItems([item.name]);
   }
+};
+
+const renameItem = (item: FileItem) => {
+  const newName = prompt('Nuevo nombre:', item.name);
+  if (newName && newName !== item.name) {
+    fileStore.renameItem(item.name, newName);
+  }
+};
+
+const showProperties = (item: FileItem) => {
+  propertiesItem.value = item;
+};
+
+// Clipboard actions
+const handleCopy = (item: FileItem) => {
+  fileStore.setClipboard(item, 'copy');
+};
+
+const handleCut = (item: FileItem) => {
+  fileStore.setClipboard(item, 'cut');
+};
+
+const handlePaste = () => {
+  fileStore.pasteItem();
+};
+
+// Context Menu
+const openContextMenu = (e: MouseEvent, item: FileItem | null) => {
+  e.preventDefault();
+  contextMenu.value = {
+    visible: true,
+    x: e.clientX,
+    y: e.clientY,
+    item
+  };
+};
+
+const closeContextMenu = () => {
+  contextMenu.value.visible = false;
 };
 
 const toggleSelect = (name: string) => {
@@ -86,7 +135,6 @@ const formatSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-// File type detection for icons and preview
 const imageExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico'];
 const videoExts = ['.mp4', '.webm', '.ogg', '.mov', '.mkv'];
 const audioExts = ['.mp3', '.wav', '.flac', '.aac', '.m4a', '.ogg'];
@@ -115,10 +163,6 @@ const openPreview = (item: any) => {
   };
 };
 
-const closePreview = () => {
-  previewFile.value = null;
-};
-
 const downloadFile = (name: string) => {
   const url = fileStore.getDownloadUrl(name);
   window.open(url, '_blank');
@@ -134,7 +178,7 @@ const handleDblClick = (item: any) => {
 </script>
 
 <template>
-  <div class="files-view fade-in">
+  <div class="files-view fade-in" @contextmenu.self="openContextMenu($event, null)">
     <header class="files-header">
       <div class="breadcrumb">
         <button v-if="fileStore.currentPath" @click="goBack" class="back-btn">
@@ -144,13 +188,7 @@ const handleDblClick = (item: any) => {
       </div>
 
       <div class="actions">
-        <input 
-          id="file-upload" 
-          type="file" 
-          multiple 
-          style="display: none" 
-          @change="handleFileUpload"
-        />
+        <input id="file-upload" type="file" multiple style="display: none" @change="handleFileUpload" />
         
         <button @click="triggerUpload" class="btn btn-secondary">
           <Upload :size="18"/> <span>Subir</span>
@@ -158,12 +196,9 @@ const handleDblClick = (item: any) => {
         <button @click="createFolder" class="btn btn-secondary">
           <Plus :size="18"/> <span>Nueva Carpeta</span>
         </button>
-        <button 
-          v-if="selectedItems.length > 0" 
-          @click="deleteSelected" 
-          class="btn btn-danger"
-        >
-          <Trash2 :size="18"/> <span>Eliminar ({{ selectedItems.length }})</span>
+        
+        <button v-if="fileStore.clipboard.item" @click="handlePaste" class="btn btn-primary paste-btn">
+          <ClipboardPaste :size="18"/> <span>Pegar</span>
         </button>
 
         <div class="view-toggle">
@@ -173,7 +208,6 @@ const handleDblClick = (item: any) => {
       </div>
     </header>
 
-    <!-- Upload Progress Banner -->
     <div v-if="fileStore.uploading" class="upload-banner">
       <div class="upload-banner-header">
         <Upload :size="16" />
@@ -181,26 +215,27 @@ const handleDblClick = (item: any) => {
       </div>
       <div v-for="uf in fileStore.uploadingFiles" :key="uf.name" class="upload-file-item">
         <span class="upload-filename">{{ uf.name }}</span>
-        <div class="upload-progress-bar">
-          <div class="upload-progress-fill" :style="{ width: uf.progress + '%' }"></div>
-        </div>
+        <div class="upload-progress-bar"><div class="upload-progress-fill" :style="{ width: uf.progress + '%' }"></div></div>
         <span class="upload-percent">{{ uf.progress }}%</span>
       </div>
     </div>
 
     <div v-if="fileStore.loading" class="loader">
-      <div class="spinner"></div>
-      Cargando archivos...
+      <div class="spinner"></div> Cargando archivos...
     </div>
 
-    <div v-else class="file-area" :class="viewMode">
+    <div v-else class="file-area" :class="viewMode" @contextmenu.self="openContextMenu($event, null)">
       <div 
         v-for="item in fileStore.items" 
         :key="item.name"
         class="file-item glass"
-        :class="{ selected: selectedItems.includes(item.name) }"
+        :class="{ 
+          selected: selectedItems.includes(item.name),
+          'is-cut': fileStore.clipboard.item?.name === item.name && fileStore.clipboard.type === 'cut'
+        }"
         @click="toggleSelect(item.name)"
         @dblclick="handleDblClick(item)"
+        @contextmenu.stop="openContextMenu($event, item)"
       >
         <div class="icon">
           <Folder v-if="item.isDirectory" :size="48" color="#6366f1" fill="#6366f122" />
@@ -214,24 +249,6 @@ const handleDblClick = (item: any) => {
           <span class="name">{{ item.name }}</span>
           <span class="meta" v-if="!item.isDirectory">{{ formatSize(item.size) }}</span>
         </div>
-        <!-- Quick actions on hover -->
-        <div class="quick-actions" v-if="!item.isDirectory">
-          <button 
-            v-if="isPreviewable(item.extension)" 
-            @click.stop="openPreview(item)" 
-            class="quick-btn" 
-            title="Vista previa"
-          >
-            <Eye :size="14"/>
-          </button>
-          <button 
-            @click.stop="downloadFile(item.name)" 
-            class="quick-btn" 
-            title="Descargar"
-          >
-            <Download :size="14"/>
-          </button>
-        </div>
       </div>
 
       <div v-if="fileStore.items.length === 0" class="empty-state">
@@ -240,35 +257,93 @@ const handleDblClick = (item: any) => {
       </div>
     </div>
 
+    <!-- Context Menu -->
+    <Teleport to="body">
+      <div 
+        v-if="contextMenu.visible" 
+        class="context-menu glass" 
+        :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
+        @click.stop
+      >
+        <template v-if="contextMenu.item">
+          <button @click="handleCopy(contextMenu.item!)">
+            <Copy :size="14"/> Copiar
+          </button>
+          <button @click="handleCut(contextMenu.item!)">
+            <Scissors :size="14"/> Cortar
+          </button>
+          <div class="divider"></div>
+          <button @click="renameItem(contextMenu.item!)">
+            <Edit2 :size="14"/> Renombrar
+          </button>
+          <button @click="deleteItem(contextMenu.item!)" class="danger">
+            <Trash2 :size="14"/> Eliminar
+          </button>
+          <div class="divider"></div>
+          <button @click="showProperties(contextMenu.item!)">
+            <Info :size="14"/> Propiedades
+          </button>
+        </template>
+        <template v-else>
+          <button @click="createFolder">
+            <Plus :size="14"/> Nueva Carpeta
+          </button>
+          <button @click="triggerUpload">
+            <Upload :size="14"/> Subir Archivo
+          </button>
+          <div class="divider" v-if="fileStore.clipboard.item"></div>
+          <button v-if="fileStore.clipboard.item" @click="handlePaste">
+            <ClipboardPaste :size="14"/> Pegar elemento
+          </button>
+        </template>
+      </div>
+    </Teleport>
+
+    <!-- Properties Modal -->
+    <Teleport to="body">
+      <div v-if="propertiesItem" class="modal-overlay" @click="propertiesItem = null">
+        <div class="modal glass properties-modal" @click.stop>
+          <div class="modal-header">
+            <h3>Propiedades</h3>
+            <button @click="propertiesItem = null" class="close-btn"><X :size="20"/></button>
+          </div>
+          <div class="modal-body">
+            <div class="prop-icon">
+              <Folder v-if="propertiesItem.isDirectory" :size="64" color="#6366f1" />
+              <File v-else :size="64" color="#94a3b8" />
+            </div>
+            <div class="prop-details">
+              <div class="prop-row"><strong>Nombre:</strong> <span>{{ propertiesItem.name }}</span></div>
+              <div class="prop-row"><strong>Tipo:</strong> <span>{{ propertiesItem.isDirectory ? 'Carpeta' : 'Archivo' }}</span></div>
+              <div class="prop-row" v-if="!propertiesItem.isDirectory"><strong>Tamaño:</strong> <span>{{ formatSize(propertiesItem.size) }} ({{ propertiesItem.size }} bytes)</span></div>
+              <div class="prop-row"><strong>Modificado:</strong> <span>{{ new Date(propertiesItem.modified).toLocaleString() }}</span></div>
+              <div class="prop-row"><strong>Ubicación:</strong> <span>/{{ fileStore.currentPath }}</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- Preview Modal -->
     <Teleport to="body">
-      <div v-if="previewFile" class="preview-overlay" @click.self="closePreview">
+      <div v-if="previewFile" class="preview-overlay" @click.self="previewFile = null">
         <div class="preview-modal glass">
           <div class="preview-header">
             <span class="preview-title">{{ previewFile.name }}</span>
             <div class="preview-actions">
-              <button @click="downloadFile(previewFile.name)" class="preview-btn" title="Descargar">
-                <Download :size="18"/>
-              </button>
-              <button @click="closePreview" class="preview-btn close" title="Cerrar">
-                <X :size="18"/>
-              </button>
+              <button @click="downloadFile(previewFile.name)" class="preview-btn" title="Descargar"><Download :size="18"/></button>
+              <button @click="previewFile = null" class="preview-btn hex-close"><X :size="18"/></button>
             </div>
           </div>
           <div class="preview-content">
-            <!-- Image -->
             <img v-if="previewFile.type === 'image'" :src="previewFile.url" :alt="previewFile.name" />
-            <!-- Video -->
             <video v-else-if="previewFile.type === 'video'" :src="previewFile.url" controls autoplay />
-            <!-- Audio -->
             <div v-else-if="previewFile.type === 'audio'" class="audio-preview">
               <FileAudio :size="64" color="#ec4899" />
               <span>{{ previewFile.name }}</span>
               <audio :src="previewFile.url" controls autoplay />
             </div>
-            <!-- PDF -->
             <iframe v-else-if="previewFile.type === 'pdf'" :src="previewFile.url" />
-            <!-- Text -->
             <iframe v-else-if="previewFile.type === 'text'" :src="previewFile.url" class="text-preview" />
           </div>
         </div>
@@ -278,374 +353,71 @@ const handleDblClick = (item: any) => {
 </template>
 
 <style scoped>
-.files-view {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.files-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.back-btn {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 0.5rem;
-}
-
-.path {
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-.actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1rem;
-  font-size: 0.85rem;
-}
-
+.files-view { display: flex; flex-direction: column; gap: 1.5rem; min-height: 500px; }
+.files-header { display: flex; justify-content: space-between; align-items: center; }
+.breadcrumb { display: flex; align-items: center; gap: 1rem; }
+.path { font-weight: 600; color: var(--text-muted); }
+.actions { display: flex; gap: 0.75rem; align-items: center; }
+.btn { display: flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; font-size: 0.85rem; }
 .btn-secondary { background: rgba(255, 255, 255, 0.05); color: white; border: 1px solid var(--border); }
-.btn-danger { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+.paste-btn { background: var(--primary); font-weight: 700; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
 
-.view-toggle {
-  display: flex;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: var(--radius);
-  padding: 2px;
-}
+.view-toggle { display: flex; background: rgba(255, 255, 255, 0.05); border-radius: var(--radius); padding: 2px; }
+.view-toggle button { padding: 0.5rem; background: transparent; color: var(--text-muted); }
+.view-toggle button.active { background: var(--primary); color: white; }
 
-.view-toggle button {
-  padding: 0.5rem;
-  background: transparent;
-  color: var(--text-muted);
-}
-
-.view-toggle button.active {
-  background: var(--primary);
-  color: white;
-}
-
-/* ── Upload Progress Banner ── */
-.upload-banner {
-  background: rgba(99, 102, 241, 0.08);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 10px;
-  padding: 0.85rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  animation: fadeSlideIn 0.3s ease;
-}
-
-@keyframes fadeSlideIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.upload-banner-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--primary);
-}
-
-.upload-file-item {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.upload-filename {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  min-width: 120px;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.upload-progress-bar {
-  flex: 1;
-  height: 6px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.upload-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary), #818cf8);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-
-.upload-percent {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--primary);
-  min-width: 36px;
-  text-align: right;
-}
-
-/* ── File Area ── */
-.file-area {
-  display: grid;
-  gap: 1.25rem;
-}
-
-.file-area.grid {
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-}
+.file-area { display: grid; gap: 1.25rem; min-height: 400px; }
+.file-area.grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 
 .file-item {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1.25rem;
-  gap: 0.75rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  user-select: none;
+  position: relative; display: flex; flex-direction: column; align-items: center; padding: 1.25rem;
+  gap: 0.75rem; cursor: pointer; transition: all 0.2s; user-select: none;
 }
+.file-item:hover { background: rgba(255, 255, 255, 0.05); transform: translateY(-2px); }
+.file-item.selected { border-color: var(--primary); background: rgba(99, 102, 241, 0.1); }
+.file-item.is-cut { opacity: 0.4; border: 1px dashed var(--primary); }
 
-.file-item:hover {
-  background: rgba(255, 255, 255, 0.05);
-  transform: translateY(-2px);
+.info { display: flex; flex-direction: column; align-items: center; gap: 0.2rem; width: 100%; }
+.name { font-size: 0.82rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center; }
+.meta { font-size: 0.7rem; color: var(--text-muted); }
+
+/* Context Menu Style */
+.context-menu {
+  position: fixed; z-index: 20000; min-width: 180px;
+  padding: 0.5rem; border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+  animation: contextIn 0.15s ease-out;
 }
+@keyframes contextIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 
-.file-item.selected {
-  border-color: var(--primary);
-  background: rgba(99, 102, 241, 0.1);
+.context-menu button {
+  width: 100%; display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.6rem 0.75rem; font-size: 0.85rem; border-radius: 8px;
+  background: transparent; color: white; transition: all 0.15s;
 }
+.context-menu button:hover { background: rgba(255,255,255,0.08); }
+.context-menu button.danger { color: #fca5a5; }
+.context-menu button.danger:hover { background: rgba(239, 68, 68, 0.2); }
+.context-menu .divider { height: 1px; background: var(--border); margin: 0.4rem; opacity: 0.5; }
 
-.file-item .info {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.2rem;
-  width: 100%;
+/* Modals */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 20001;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
 }
+.modal { width: 400px; padding: 1.5rem; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.prop-icon { display: flex; justify-content: center; margin-bottom: 1.5rem; }
+.prop-details { display: flex; flex-direction: column; gap: 0.75rem; }
+.prop-row { display: flex; justify-content: space-between; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; }
+.prop-row strong { color: var(--text-muted); }
 
-.name {
-  font-size: 0.82rem;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-  text-align: center;
-}
-
-.meta {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-}
-
-/* ── Quick Action Buttons ── */
-.quick-actions {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  display: flex;
-  gap: 0.25rem;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.file-item:hover .quick-actions { opacity: 1; }
-
-.quick-btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.4);
-  color: white;
-  backdrop-filter: blur(4px);
-  transition: all 0.15s;
-}
-
-.quick-btn:hover {
-  background: var(--primary);
-  transform: scale(1.1);
-}
-
-.empty-state {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 5rem;
-  gap: 1.5rem;
-  color: var(--text-muted);
-}
-
-/* Loader */
-.loader {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 5rem;
-  color: var(--text-muted);
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ── Preview Modal ── */
-.preview-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.preview-modal {
-  width: 90%;
-  max-width: 1000px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.preview-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 1.25rem;
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid var(--border);
-}
-
-.preview-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.preview-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.preview-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-muted);
-  transition: all 0.15s;
-}
-
-.preview-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-}
-
-.preview-btn.close:hover {
-  background: #ef4444;
-}
-
-.preview-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: auto;
-  padding: 1rem;
-  background: var(--bg-main);
-  min-height: 300px;
-}
-
-.preview-content img {
-  max-width: 100%;
-  max-height: 70vh;
-  object-fit: contain;
-  border-radius: 8px;
-}
-
-.preview-content video {
-  max-width: 100%;
-  max-height: 70vh;
-  border-radius: 8px;
-}
-
-.preview-content iframe {
-  width: 100%;
-  height: 70vh;
-  border: none;
-  border-radius: 8px;
-  background: white;
-}
-
-.preview-content iframe.text-preview {
-  background: #1e1e2e;
-  color: white;
-}
-
-.audio-preview {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-  padding: 3rem;
-}
-
-.audio-preview span {
-  font-size: 1rem;
-  font-weight: 600;
-}
-
-.audio-preview audio {
-  width: 100%;
-  max-width: 400px;
-}
+/* Preview Modal Shared with previous implementation... */
+.preview-overlay { position: fixed; inset: 0; z-index: 20002; background: rgba(0,0,0,0.85); backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center; padding: 2rem; }
+.preview-modal { width: 90%; max-width: 1100px; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; border-radius: 24px; }
+.preview-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); }
+.preview-content { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; background: #000; min-height: 400px; }
+.preview-content img, .preview-content video { max-width: 100%; max-height: 75vh; }
+.preview-content iframe { width: 100%; height: 75vh; border: none; background: white; }
 </style>

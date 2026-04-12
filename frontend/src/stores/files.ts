@@ -23,6 +23,11 @@ export const useFileStore = defineStore('files', {
     error: null as string | null,
     uploading: false,
     uploadingFiles: [] as UploadingFile[],
+    clipboard: {
+      item: null as FileItem | null,
+      type: null as 'copy' | 'cut' | null,
+      fromPath: ''
+    }
   }),
 
   actions: {
@@ -36,6 +41,49 @@ export const useFileStore = defineStore('files', {
         this.error = err.response?.data?.error || 'Error al obtener archivos';
       } finally {
         this.loading = false;
+      }
+    },
+
+    async renameItem(oldName: string, newName: string) {
+      try {
+        await axios.post('/api/files/rename', {
+          path: this.currentPath,
+          oldName,
+          newName
+        });
+        await this.fetchFiles(this.currentPath);
+      } catch (error: any) {
+        alert(error.response?.data?.error || 'Error al renombrar');
+      }
+    },
+
+    setClipboard(item: FileItem, type: 'copy' | 'cut') {
+      this.clipboard = {
+        item,
+        type,
+        fromPath: this.currentPath
+      };
+    },
+
+    async pasteItem() {
+      if (!this.clipboard.item || !this.clipboard.type) return;
+      
+      const endpoint = this.clipboard.type === 'copy' ? '/api/files/copy' : '/api/files/move';
+      
+      try {
+        await axios.post(endpoint, {
+          fromPath: this.clipboard.fromPath,
+          toPath: this.currentPath,
+          name: this.clipboard.item.name
+        });
+        
+        if (this.clipboard.type === 'cut') {
+          this.clipboard = { item: null, type: null, fromPath: '' };
+        }
+        
+        await this.fetchFiles(this.currentPath);
+      } catch (error: any) {
+        alert(error.response?.data?.error || 'Error al pegar');
       }
     },
 
