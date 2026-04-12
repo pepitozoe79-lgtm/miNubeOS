@@ -35,6 +35,8 @@ systemctl daemon-reload
 # 3. Eliminar archivos de la aplicación
 echo -e "${BLUE}[2/3] Eliminando archivos de la aplicación en /opt/nubeos...${NC}"
 rm -rf /opt/nubeos
+# Limpiar posibles bases de datos residuales en el directorio actual si se ejecutó localmente
+rm -rf ./data/db/nubeos.sqlite || true
 
 # 4. Limpieza (Opcional - podrías dejar Docker/Node si el usuario los usa para más cosas)
 echo -e "${BLUE}[3/3] Limpieza final...${NC}"
