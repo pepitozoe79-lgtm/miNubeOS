@@ -12,7 +12,10 @@ import {
   Bell,
   Search,
   Grid,
-  LayoutDashboard
+  LayoutDashboard,
+  LogOut,
+  RotateCcw,
+  Power
 } from 'lucide-vue-next';
 import Window from '../components/Window.vue';
 import Files from './Files.vue';
@@ -25,6 +28,15 @@ const desktop = useDesktopStore();
 const router = useRouter();
 
 const stats = ref({ cpu: 0, ram: 0, disk: 0 });
+const showUserMenu = ref(false);
+
+const toggleUserMenu = () => {
+  showUserMenu.value = !showUserMenu.value;
+};
+
+const closeUserMenu = () => {
+  showUserMenu.value = false;
+};
 
 // Get list of open windows for the taskbar
 const openWindows = computed(() => {
@@ -70,6 +82,28 @@ const handleLogout = () => {
   router.push('/login');
 };
 
+const handleReboot = async () => {
+  if (confirm('¿Estás seguro de que deseas reiniciar el equipo?')) {
+    try {
+      await axios.post('/api/system/reboot');
+      alert('Reiniciando equipo...');
+    } catch (err) {
+      alert('Error al intentar reiniciar');
+    }
+  }
+};
+
+const handleShutdown = async () => {
+  if (confirm('¿Estás seguro de que deseas apagar el equipo?')) {
+    try {
+      await axios.post('/api/system/shutdown');
+      alert('Apagando equipo...');
+    } catch (err) {
+      alert('Error al intentar apagar');
+    }
+  }
+};
+
 const openApp = (appId: any) => {
   desktop.openWindow(appId);
 };
@@ -112,9 +146,41 @@ const openApp = (appId: any) => {
         <button class="icon-btn"><Search :size="18"/></button>
         <button class="icon-btn"><Bell :size="18"/></button>
         <div class="time">{{ new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</div>
-        <div class="user-pill glass" @click="handleLogout">
-          <User :size="16"/>
-          <span>{{ auth.user?.username }}</span>
+        
+        <div class="user-pill-container">
+          <div class="user-pill glass" :class="{ active: showUserMenu }" @click="toggleUserMenu">
+            <User :size="16"/>
+            <span>{{ auth.user?.username }}</span>
+          </div>
+
+          <!-- User Menu Dropdown -->
+          <div v-if="showUserMenu" class="user-dropdown glass fade-in">
+            <div class="dropdown-header">
+              <div class="user-avatar-large"><User :size="24"/></div>
+              <div class="user-info-large">
+                <div class="username-large">{{ auth.user?.username }}</div>
+                <div class="user-role-large">{{ auth.user?.role }}</div>
+              </div>
+            </div>
+            
+            <div class="dropdown-divider"></div>
+            
+            <button class="dropdown-item" @click="handleLogout">
+              <LogOut :size="16" />
+              <span>Cerrar sesión</span>
+            </button>
+            <button class="dropdown-item" @click="handleReboot">
+              <RotateCcw :size="16" />
+              <span>Reiniciar equipo</span>
+            </button>
+            <button class="dropdown-item power" @click="handleShutdown">
+              <Power :size="16" />
+              <span>Apagar equipo</span>
+            </button>
+          </div>
+          
+          <!-- Invisible overlay to close menu -->
+          <div v-if="showUserMenu" class="menu-overlay" @click="closeUserMenu"></div>
         </div>
       </div>
     </header>
@@ -294,6 +360,10 @@ const openApp = (appId: any) => {
   object-fit: contain;
 }
 
+.user-pill-container {
+  position: relative;
+}
+
 .user-pill {
   display: flex;
   align-items: center;
@@ -301,6 +371,91 @@ const openApp = (appId: any) => {
   padding: 0.4rem 0.75rem;
   font-size: 0.85rem;
   cursor: pointer;
+  z-index: 1002;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.user-pill.active {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: 130%;
+  right: 0;
+  width: 260px;
+  border-radius: 16px;
+  overflow: hidden;
+  z-index: 1001;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.dropdown-header {
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-avatar-large {
+  width: 48px;
+  height: 48px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+
+.username-large {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.user-role-large {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.1);
+  margin: 0.5rem;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  width: 100%;
+  border-radius: 10px;
+  background: transparent;
+  color: white;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.dropdown-item:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+.dropdown-item.power:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
 }
 
 .desktop-area {

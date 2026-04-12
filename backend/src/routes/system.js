@@ -69,4 +69,20 @@ router.post('/update', authMiddleware, adminMiddleware, async (req, res) => {
   });
 });
 
+router.post('/reboot', authMiddleware, adminMiddleware, async (req, res) => {
+  const { exec } = require('child_process');
+  res.json({ success: true, message: 'El equipo se está reiniciando...' });
+  setTimeout(() => {
+    exec('reboot');
+  }, 1000);
+});
+
+router.post('/shutdown', authMiddleware, adminMiddleware, async (req, res) => {
+  const { exec } = require('child_process');
+  res.json({ success: true, message: 'El equipo se está apagando...' });
+  setTimeout(() => {
+    exec('poweroff');
+  }, 1000);
+});
+
 module.exports = router;
