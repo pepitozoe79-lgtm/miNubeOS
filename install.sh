@@ -94,7 +94,7 @@ cd $INSTALL_DIR/backend && npm install --omit=dev
 
 # Instalar dependencias del Frontend y construir
 cd $INSTALL_DIR/frontend && npm install
-npm run build
+npx vite build || ./node_modules/.bin/vite build
 
 # Verificar que el build se generó correctamente
 if [ ! -d "$INSTALL_DIR/frontend/dist" ]; then

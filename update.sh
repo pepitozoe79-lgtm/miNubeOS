@@ -21,7 +21,12 @@ echo "Actualizando dependencias del Frontend..."
 cd $INSTALL_DIR/frontend
 npm install
 echo "Construyendo el nuevo Frontend..."
-npm run build
+npx vite build || ./node_modules/.bin/vite build
+
+if [ ! -d "dist" ]; then
+    echo "ERROR: No se pudo generar la carpeta dist"
+    exit 1
+fi
 
 echo "--- Actualización completada con éxito ---"
 
