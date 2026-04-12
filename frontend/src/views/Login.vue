@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
 import { useRouter } from 'vue-router';
 import { LogIn, User, Lock } from 'lucide-vue-next';
@@ -9,6 +9,81 @@ const router = useRouter();
 
 const username = ref('');
 const password = ref('');
+const canvasRef = ref<HTMLCanvasElement | null>(null);
+
+// Particle system variables
+let ctx: CanvasRenderingContext2D | null = null;
+let stars: any[] = [];
+let mouse = { x: 0, y: 0 };
+let animationFrameId: number;
+
+const initStars = (width: number, height: number) => {
+  stars = [];
+  const starCount = 150;
+  for (let i = 0; i < starCount; i++) {
+    stars.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      size: Math.random() * 2,
+      opacity: Math.random(),
+      speed: Math.random() * 0.5 + 0.1
+    });
+  }
+};
+
+const draw = () => {
+  if (!ctx || !canvasRef.value) return;
+  const { width, height } = canvasRef.value;
+  
+  ctx.clearRect(0, 0, width, height);
+  
+  stars.forEach(star => {
+    // Parallax effect based on mouse
+    const offsetX = (mouse.x - width / 2) * star.speed * 0.05;
+    const offsetY = (mouse.y - height / 2) * star.speed * 0.05;
+    
+    ctx!.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+    ctx!.beginPath();
+    ctx!.arc(star.x + offsetX, star.y + offsetY, star.size, 0, Math.PI * 2);
+    ctx!.fill();
+    
+    // Twinkle effect
+    star.opacity += (Math.random() - 0.5) * 0.05;
+    if (star.opacity < 0.1) star.opacity = 0.1;
+    if (star.opacity > 1) star.opacity = 1;
+  });
+  
+  animationFrameId = requestAnimationFrame(draw);
+};
+
+const handleMouseMove = (e: MouseEvent) => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+};
+
+const handleResize = () => {
+  if (canvasRef.value) {
+    canvasRef.value.width = window.innerWidth;
+    canvasRef.value.height = window.innerHeight;
+    initStars(canvasRef.value.width, canvasRef.value.height);
+  }
+};
+
+onMounted(() => {
+  if (canvasRef.value) {
+    ctx = canvasRef.value.getContext('2d');
+    handleResize();
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('resize', handleResize);
+    draw();
+  }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('mousemove', handleMouseMove);
+  window.removeEventListener('resize', handleResize);
+  cancelAnimationFrame(animationFrameId);
+});
 
 const handleLogin = async () => {
   const success = await auth.login(username.value, password.value);
@@ -20,10 +95,11 @@ const handleLogin = async () => {
 
 <template>
   <div class="login-container">
+    <canvas ref="canvasRef" class="space-canvas"></canvas>
+    
     <!-- Abstract background elements -->
     <div class="bg-blob blob-1"></div>
     <div class="bg-blob blob-2"></div>
-    <div class="bg-blob blob-3"></div>
 
     <div class="login-card fade-in">
       <div class="header">
@@ -73,10 +149,6 @@ const handleLogin = async () => {
           </span>
           <span v-else>Autenticando...</span>
         </button>
-
-        <div class="footer-links">
-          <a href="#" class="link-muted">¿Olvidaste tu contraseña?</a>
-        </div>
       </form>
 
       <div class="version-badge">v1.2.0 Stable Build</div>
@@ -88,6 +160,16 @@ const handleLogin = async () => {
 </template>
 
 <style scoped>
+.space-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+}
+
 .login-container {
   display: flex;
   align-items: center;
@@ -105,35 +187,25 @@ const handleLogin = async () => {
   position: absolute;
   filter: blur(80px);
   z-index: 0;
-  opacity: 0.4;
+  opacity: 0.2;
   border-radius: 50%;
   animation: float 20s infinite alternate;
 }
 
 .blob-1 {
-  width: 500px;
-  height: 500px;
+  width: 600px;
+  height: 600px;
   background: #4338ca;
   top: -100px;
   right: -100px;
 }
 
 .blob-2 {
-  width: 400px;
-  height: 400px;
+  width: 500px;
+  height: 500px;
   background: #7e22ce;
   bottom: -100px;
   left: -50px;
-  animation-duration: 25s;
-}
-
-.blob-3 {
-  width: 300px;
-  height: 300px;
-  background: #1d4ed8;
-  top: 40%;
-  left: 30%;
-  animation-duration: 30s;
 }
 
 @keyframes float {
@@ -143,13 +215,13 @@ const handleLogin = async () => {
 
 .login-card {
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
   background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  border-radius: 24px;
+  border-radius: 28px;
   padding: 3rem;
   z-index: 10;
   text-align: center;
@@ -161,17 +233,17 @@ const handleLogin = async () => {
 
 .logo-wrapper {
   position: relative;
-  width: 80px;
-  height: 80px;
+  width: 240px; /* Tripled size! (80 * 3) */
+  height: 240px;
   margin: 0 auto 1.5rem;
 }
 
 .logo-glow {
   position: absolute;
-  inset: -10px;
+  inset: -20px;
   background: var(--primary);
-  filter: blur(20px);
-  opacity: 0.3;
+  filter: blur(40px);
+  opacity: 0.25;
   border-radius: 50%;
 }
 
@@ -181,11 +253,12 @@ const handleLogin = async () => {
   object-fit: contain;
   position: relative;
   z-index: 2;
+  filter: drop-shadow(0 0 20px rgba(99, 102, 241, 0.5));
 }
 
 h1 {
-  font-size: 2.5rem;
-  font-weight: 900;
+  font-size: 2.8rem;
+  font-weight: 950;
   letter-spacing: -0.05em;
   margin-bottom: 0.25rem;
   background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
@@ -195,8 +268,9 @@ h1 {
 
 .subtitle {
   color: #94a3b8;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 500;
+  letter-spacing: 0.05em;
 }
 
 .login-form {
@@ -262,17 +336,18 @@ input:focus + .input-icon,
   color: white;
   border: none;
   border-radius: 12px;
-  padding: 1rem;
-  font-size: 1rem;
-  font-weight: 700;
+  padding: 1.1rem;
+  font-size: 1.1rem;
+  font-weight: 800;
   cursor: pointer;
   transition: all 0.3s;
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  margin-top: 0.5rem;
 }
 
 .btn-login:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 12px 24px rgba(99, 102, 241, 0.4);
 }
 
 .btn-login:active {
@@ -309,23 +384,8 @@ input:focus + .input-icon,
   40%, 60% { transform: translate3d(4px, 0, 0); }
 }
 
-.footer-links {
-  text-align: center;
-}
-
-.link-muted {
-  color: #64748b;
-  font-size: 0.85rem;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.link-muted:hover {
-  color: #94a3b8;
-}
-
 .version-badge {
-  margin-top: 3rem;
+  margin-top: 2rem;
   font-size: 0.7rem;
   font-weight: 700;
   color: #475569;
