@@ -303,7 +303,7 @@ const handleDblClick = (item: any) => {
         v-if="contextMenu.visible" 
         class="context-menu glass" 
         :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
-        @click.stop
+        @click="closeContextMenu"
       >
         <template v-if="contextMenu.item">
           <button @click="handleCopy(contextMenu.item!)">
