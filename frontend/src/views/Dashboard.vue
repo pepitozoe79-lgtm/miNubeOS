@@ -154,7 +154,7 @@ const openApp = (appId: any) => {
           </div>
 
           <!-- User Menu Dropdown -->
-          <div v-if="showUserMenu" class="user-dropdown glass fade-in">
+          <div v-if="showUserMenu" class="user-dropdown fade-in">
             <div class="dropdown-header">
               <div class="user-avatar-large"><User :size="24"/></div>
               <div class="user-info-large">
@@ -387,9 +387,11 @@ const openApp = (appId: any) => {
   right: 0;
   width: 260px;
   border-radius: 16px;
+  background: #1e293b; /* Solid background for readability */
+  border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
   z-index: 1001;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.5);
   padding: 0.5rem;
   display: flex;
   flex-direction: column;
