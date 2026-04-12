@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from '../stores/auth';
-import { useDesktopStore } from '../stores/desktop';
+import { useDesktopStore, type WindowApp } from '../stores/desktop';
 import axios from 'axios';
 import { useRouter } from 'vue-router';
 import { 
@@ -11,7 +11,8 @@ import {
   User, 
   Bell,
   Search,
-  Grid
+  Grid,
+  LayoutDashboard
 } from 'lucide-vue-next';
 import Window from '../components/Window.vue';
 import Files from './Files.vue';
@@ -24,6 +25,25 @@ const desktop = useDesktopStore();
 const router = useRouter();
 
 const stats = ref({ cpu: 0, ram: 0, disk: 0 });
+
+// Get list of open windows for the taskbar
+const openWindows = computed(() => {
+  return Object.values(desktop.windows).filter(w => w.isOpen);
+});
+
+const handleTaskbarClick = (appId: WindowApp) => {
+  const win = desktop.windows[appId];
+  if (win.isMinimized) {
+    // Restore if minimized
+    desktop.toggleMinimize(appId);
+  } else if (win.zIndex === desktop.topZIndex) {
+    // Minimize if it's the active window
+    desktop.toggleMinimize(appId);
+  } else {
+    // Focus if it's behind another window
+    desktop.focusWindow(appId);
+  }
+};
 
 const fetchStats = async () => {
   try {
@@ -68,6 +88,24 @@ const openApp = (appId: any) => {
           <img src="../assets/logo.png" alt="Logo" class="top-logo" />
           <span class="os-name">NubeOS</span>
         </div>
+      </div>
+
+      <!-- Taskbar: open windows -->
+      <div class="taskbar">
+        <button 
+          v-for="win in openWindows" 
+          :key="win.id"
+          class="taskbar-item"
+          :class="{ active: !win.isMinimized && win.zIndex === desktop.topZIndex, minimized: win.isMinimized }"
+          @click="handleTaskbarClick(win.id)"
+          :title="win.title"
+        >
+          <Folder v-if="win.id === 'files'" :size="16" />
+          <LayoutDashboard v-else-if="win.id === 'apps'" :size="16" />
+          <Activity v-else-if="win.id === 'monitor'" :size="16" />
+          <Settings v-else :size="16" />
+          <span class="taskbar-label">{{ win.title }}</span>
+        </button>
       </div>
       
       <div class="top-right">
@@ -174,6 +212,72 @@ const openApp = (appId: any) => {
   display: flex;
   align-items: center;
   gap: 1.5rem;
+  flex-shrink: 0;
+}
+
+/* Taskbar */
+.taskbar {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0 1rem;
+  overflow-x: auto;
+}
+
+.taskbar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.taskbar-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+.taskbar-item.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: white;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+.taskbar-item.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 16px;
+  height: 3px;
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+.taskbar-item.minimized {
+  opacity: 0.5;
+}
+
+.taskbar-item.minimized:hover {
+  opacity: 0.85;
+}
+
+.taskbar-label {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .os-name { font-weight: 800; font-size: 1.1rem; }
