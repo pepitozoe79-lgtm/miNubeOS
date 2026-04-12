@@ -21,24 +21,27 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# 2. Detener y eliminar servicios
+# 2. Detener y eliminar servicios (nuevo y viejos)
 echo -e "${BLUE}[1/3] Deteniendo y eliminando servicios de NubeOS...${NC}"
-systemctl stop nubeos-backend || true
-systemctl stop nubeos-frontend || true
-systemctl disable nubeos-backend || true
-systemctl disable nubeos-frontend || true
+systemctl stop nubeos 2>/dev/null || true
+systemctl disable nubeos 2>/dev/null || true
+rm -f /etc/systemd/system/nubeos.service
 
+# Limpiar servicios viejos si existen
+systemctl stop nubeos-backend 2>/dev/null || true
+systemctl stop nubeos-frontend 2>/dev/null || true
+systemctl disable nubeos-backend 2>/dev/null || true
+systemctl disable nubeos-frontend 2>/dev/null || true
 rm -f /etc/systemd/system/nubeos-backend.service
 rm -f /etc/systemd/system/nubeos-frontend.service
+
 systemctl daemon-reload
 
 # 3. Eliminar archivos de la aplicación
 echo -e "${BLUE}[2/3] Eliminando archivos de la aplicación en /opt/nubeos...${NC}"
 rm -rf /opt/nubeos
-# Limpiar posibles bases de datos residuales en el directorio actual si se ejecutó localmente
-rm -rf ./data/db/nubeos.sqlite || true
 
-# 4. Limpieza (Opcional - podrías dejar Docker/Node si el usuario los usa para más cosas)
+# 4. Limpieza
 echo -e "${BLUE}[3/3] Limpieza final...${NC}"
 
 echo

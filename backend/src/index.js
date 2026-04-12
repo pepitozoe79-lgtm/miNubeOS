@@ -3,6 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const dotenv = require('dotenv');
+const path = require('path');
+const fs = require('fs');
 const authRoutes = require('./routes/auth');
 const filesRoutes = require('./routes/files');
 const appsRoutes = require('./routes/apps');
@@ -16,12 +18,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false // Allow inline scripts from Vite build
+}));
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Routes
+// API Routes (must be defined BEFORE static file serving)
 app.use('/api/auth', authRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/apps', appsRoutes);
@@ -37,6 +41,25 @@ app.get('/api/me', authMiddleware, (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'NubeOS Backend is running', time: new Date() });
 });
+
+// --- Serve Frontend Static Files in Production ---
+const frontendDistPath = path.join(__dirname, '../../frontend/dist');
+
+if (fs.existsSync(frontendDistPath)) {
+  console.log('📦 Serving frontend from:', frontendDistPath);
+
+  // Serve static assets (js, css, images, etc.)
+  app.use(express.static(frontendDistPath));
+
+  // SPA Fallback: For any request that doesn't match an API route or
+  // static file, serve index.html so Vue Router can handle client-side routing
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDistPath, 'index.html'));
+  });
+} else {
+  console.log('⚠️  Frontend build not found. Running in API-only mode.');
+  console.log('   (In development, use Vite dev server for the frontend)');
+}
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 NubeOS Backend running on http://localhost:${PORT}`);
