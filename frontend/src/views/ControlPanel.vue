@@ -230,6 +230,8 @@ const startStatusPolling = () => {
       // Si termina con éxito o error, detenemos polling tras recibir el estado final
       if (res.data.step === 'idle' || res.data.step === 'error') {
         stopStatusPolling();
+        isUpdating.value = false; // <-- ESTO FALTABA
+        
         if (res.data.step === 'idle') {
           updateResult.value = { success: true, message: '¡Sistema actualizado con éxito!' };
         } else {
