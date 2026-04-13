@@ -18,6 +18,7 @@ import {
   Power
 } from 'lucide-vue-next';
 import Window from '../components/Window.vue';
+import DesktopIcon from '../components/DesktopIcon.vue';
 import Files from './Files.vue';
 import Apps from './Apps.vue';
 import Home from './Home.vue';
@@ -103,10 +104,6 @@ const handleShutdown = async () => {
     }
   }
 };
-
-const openApp = (appId: any) => {
-  desktop.openWindow(appId);
-};
 </script>
 
 <template>
@@ -185,29 +182,14 @@ const openApp = (appId: any) => {
       </div>
     </header>
 
-    <!-- Desktop Icons -->
+    <!-- Desktop Area -->
     <main class="desktop-area">
-      <div class="icon-grid">
-        <div class="desktop-icon" @click="openApp('files')">
-          <div class="icon-box blue"><Folder :size="32" /></div>
-          <span>Archivos</span>
-        </div>
-        
-        <div class="desktop-icon" @click="openApp('apps')">
-          <div class="icon-box purple"><LayoutDashboard :size="32" /></div>
-          <span>App Center</span>
-        </div>
-
-        <div class="desktop-icon" @click="openApp('monitor')">
-          <div class="icon-box green"><Activity :size="32" /></div>
-          <span>Monitor</span>
-        </div>
-
-        <div class="desktop-icon" @click="openApp('admin')">
-          <div class="icon-box grey"><Settings :size="32" /></div>
-          <span>Panel Control</span>
-        </div>
-      </div>
+      <!-- Draggable Desktop Icons -->
+      <DesktopIcon 
+        v-for="icon in desktop.desktopIcons" 
+        :key="icon.id" 
+        :iconData="icon" 
+      />
 
       <!-- Windows -->
       <Window appId="files" title="Explorador de Archivos">
@@ -226,7 +208,7 @@ const openApp = (appId: any) => {
         <ControlPanel />
       </Window>
       
-      <!-- Resource Widget (Like in TOS) -->
+      <!-- Resource Widget -->
       <aside class="resource-widget glass">
         <div class="widget-header">Estado del Sistema</div>
         <div class="widget-item">
@@ -253,8 +235,8 @@ const openApp = (appId: any) => {
 .desktop-container {
   width: 100vw;
   height: 100vh;
-  background: url('../assets/wallpaper.png') no-repeat center center;
   background-size: cover;
+  background-position: center;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -463,50 +445,9 @@ const openApp = (appId: any) => {
 .desktop-area {
   flex: 1;
   position: relative;
-  padding: 2rem;
+  width: 100%;
+  height: 100%;
 }
-
-.icon-grid {
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-rows: repeat(auto-fill, 100px);
-  gap: 2rem;
-  width: min-content;
-}
-
-.desktop-icon {
-  width: 80px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  text-align: center;
-}
-
-.desktop-icon span {
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-}
-
-.icon-box {
-  width: 60px;
-  height: 60px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  transition: transform 0.2s;
-}
-
-.desktop-icon:hover .icon-box { transform: scale(1.05); }
-
-.icon-box.blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
-.icon-box.purple { background: linear-gradient(135deg, #a855f7, #6d28d9); }
-.icon-box.green { background: linear-gradient(135deg, #22c55e, #15803d); }
-.icon-box.grey { background: linear-gradient(135deg, #64748b, #334155); }
 
 .resource-widget {
   position: absolute;
