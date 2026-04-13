@@ -13,7 +13,18 @@ const getUserRoot = (username) => {
 
 const getSafePath = (username, requestedPath = '') => {
   const root = getUserRoot(username);
-  const fullPath = path.join(root, requestedPath);
+  
+  // Allow access to /media/nubeos for external drives
+  if (requestedPath.startsWith('/media/nubeos')) {
+     // Security: Prevent directory traversal even in /media
+     const normalized = path.normalize(requestedPath);
+     if (!normalized.startsWith('/media/nubeos')) {
+       throw new Error('Acceso denegado: Intento de escape en medios externos.');
+     }
+     return normalized;
+  }
+
+  const fullPath = path.resolve(root, requestedPath);
   
   // Security check: ensure the path is within the user's root
   if (!fullPath.startsWith(root)) {
