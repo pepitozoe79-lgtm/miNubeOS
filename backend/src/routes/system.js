@@ -46,16 +46,20 @@ router.post('/update', authMiddleware, adminMiddleware, async (req, res) => {
   }
 
   // Si estamos en Windows (desarrollo), solo hacemos git pull para no fallar
-  const command = process.platform === 'linux' ? `bash ${updateScript}` : 'git pull origin main';
+  // En Linux usamos bash para asegurar que los comandos se interpreten correctamente
+  const command = process.platform === 'linux' ? `bash "${updateScript}"` : 'git pull origin main';
 
-  console.log(`Ejecutando comando de actualización: ${command}`);
+  console.log(`[SYS] Iniciando actualización: ${command}`);
 
-  exec(command, { cwd: gitRoot }, (error, stdout, stderr) => {
+  exec(command, { 
+    cwd: gitRoot,
+    env: { ...process.env, PATH: process.env.PATH + ':/usr/local/bin' } // Asegurar que npm esté en path
+  }, (error, stdout, stderr) => {
     if (error) {
-      console.error(`Error de actualización: ${error.message}`);
+      console.error(`[SYS] Error de actualización: ${error.message}`);
       return res.status(500).json({ 
         error: 'Error al ejecutar la actualización', 
-        details: stderr || error.message,
+        details: stderr || stdout || error.message,
         path: gitRoot 
       });
     }
