@@ -311,6 +311,16 @@ const currentItemMetadata = computed(() => {
         </button>
       </div>
 
+      <div class="sidebar-section">
+        <header>Carpetas</header>
+        <div class="tree-root">
+          <div v-for="node in fileStore.folderTree" :key="node.path" class="tree-item">
+            <div class="tree-row" :class="{ active: fileStore.currentPath === node.path }" @click="navigateTo(node.path)">
+              <ChevronRight :size="14" class="expander" />
+              <Folder :size="16" color="#eab308" />
+              <span>{{ node.name }}</span>
+            </div>
+          </div>
         </div>
       </div>
 
