@@ -37,23 +37,28 @@ cd $INSTALL_DIR/backend
 npm install --omit=dev
 
 # 3. Update Frontend dependencies and rebuild
-set_status "frontend_deps" 50 "Instalando dependencias del Frontend..."
+set_status "frontend_deps" 50 "Limpiando y preparando Frontend..."
 echo "[3/4] Actualizando dependencias del Frontend..."
 cd $INSTALL_DIR/frontend
+
+# Limpiamos dist y caché para asegurar una construcción limpia
+rm -rf dist
+rm -rf node_modules/.vite
+
 npm install --include=dev
 
-set_status "build" 70 "Construyendo el nuevo Frontend (esto puede tardar unos minutos)..."
-echo "Construyendo el nuevo Frontend..."
+set_status "build" 70 "Construyendo nueva versión (limpieza profunda)..."
+echo "Ejecutando npm run build..."
 npm run build
 
-if [ ! -d "dist" ]; then
-    set_status "error" 0 "Error: No se pudo generar la carpeta dist tras la construcción."
-    echo "ERROR: No se pudo generar la carpeta dist tras la construcción."
+if [ ! -d "dist" ] || [ ! -f "dist/index.html" ]; then
+    set_status "error" 0 "Error: La construcción falló o no generó index.html"
+    echo "ERROR: No se pudo generar la carpeta dist o el index.html."
     exit 1
 fi
 
 # 4. Finalize and Restart
-set_status "restarting" 90 "Actualización completada. Reiniciando el sistema..."
+set_status "restarting" 90 "¡Todo listo! Reiniciando servicios..."
 echo "[4/4] Actualización completada con éxito. Programando reinicio..."
 
 # Reiniciamos el servicio un par de segundos después para permitir que el script finalice limpiamente

@@ -58,7 +58,16 @@ if (fs.existsSync(frontendDistPath)) {
   console.log('📦 Serving frontend from:', frontendDistPath);
 
   // Serve static assets (js, css, images, etc.)
-  app.use(express.static(frontendDistPath));
+  // Disable cache to ensure updates are seen immediately
+  app.use(express.static(frontendDistPath, {
+    etag: false,
+    maxAge: 0,
+    setHeaders: (res, path) => {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  }));
 
   // SPA Fallback: For any request that doesn't match an API route or
   // static file, serve index.html so Vue Router can handle client-side routing
