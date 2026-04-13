@@ -102,6 +102,29 @@ router.post('/wallpaper', authMiddleware, adminMiddleware, upload.single('wallpa
   });
 });
 
+// New: Delete custom wallpaper
+router.delete('/wallpaper', authMiddleware, adminMiddleware, (req, res) => {
+  const { url } = req.body;
+  
+  if (!url || !url.startsWith('/wallpapers/custom/')) {
+    return res.status(400).json({ error: 'URL de fondo inválida o no permitida' });
+  }
+
+  const filename = path.basename(url);
+  const filePath = path.join(__dirname, '../../../data/wallpapers', filename);
+
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      return res.json({ success: true, message: 'Fondo eliminado' });
+    } else {
+      return res.status(404).json({ error: 'Archivo no encontrado' });
+    }
+  } catch (e) {
+    res.status(500).json({ error: 'Error al eliminar el archivo' });
+  }
+});
+
 router.post('/update', authMiddleware, adminMiddleware, async (req, res) => {
   const gitRoot = path.join(__dirname, '../../../');
   const updateScript = path.join(gitRoot, 'update.sh');

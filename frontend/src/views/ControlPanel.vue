@@ -97,6 +97,22 @@ const handleWallpaperUpload = async (event: Event) => {
   }
 };
 
+const deleteWallpaper = async (url: string) => {
+  if (confirm('¿Deseas eliminar este fondo de pantalla personalizado?')) {
+    try {
+      await axios.delete('/api/system/wallpaper', { data: { url } });
+      await fetchWallpapers();
+      
+      // Si el fondo que borramos era el actual, ponemos el por defecto
+      if (desktop.wallpaper === url) {
+        desktop.setWallpaper('/wallpapers/wp1.png');
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Error al eliminar fondo');
+    }
+  }
+};
+
 onMounted(() => {
   fetchWallpapers();
 });
@@ -417,6 +433,9 @@ const handleItemClick = (id: string) => {
               @click="desktop.setWallpaper(wp.url)"
               :style="{ backgroundImage: `url(${wp.url})` }"
             >
+              <div v-if="wp.type === 'custom'" class="delete-wp-btn" @click.stop="deleteWallpaper(wp.url)">
+                <Trash2 :size="14" />
+              </div>
               <div class="wp-label">{{ wp.name }}</div>
             </div>
           </div>
@@ -648,6 +667,32 @@ td { padding: 1rem; font-size: 0.85rem; border-top: 1px solid #e2e8f0; }
 .wp-thumb { aspect-ratio: 16/10; border-radius: 10px; background-size: cover; background-position: center; cursor: pointer; border: 4px solid transparent; transition: 0.2s; }
 .wp-thumb.active { border-color: var(--primary); box-shadow: 0 4px 12px rgba(99,102,241,0.3); }
 .wp-label { position: absolute; bottom:0; left:0; right:0; background: rgba(0,0,0,0.5); padding: 0.4rem; color: white; font-size: 0.7rem; text-align: center; }
+
+.delete-wp-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 28px;
+  height: 28px;
+  background: rgba(239, 68, 68, 0.9);
+  color: white;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.wp-thumb:hover .delete-wp-btn {
+  opacity: 1;
+}
+
+.delete-wp-btn:hover {
+  background: #dc2626;
+  transform: scale(1.1);
+}
 
 .upload-thumb {
   border: 2px dashed #e2e8f0;
