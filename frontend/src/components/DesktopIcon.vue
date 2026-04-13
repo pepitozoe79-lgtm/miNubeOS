@@ -1,20 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Folder, LayoutDashboard, Activity, Settings } from 'lucide-vue-next';
+import { Folder, LayoutDashboard, Activity, Settings, HardDrive } from 'lucide-vue-next';
 import { useDesktopStore, type DesktopIcon } from '../stores/desktop';
+import { useFileStore } from '../stores/files';
 
 const props = defineProps<{
   iconData: DesktopIcon;
 }>();
 
 const desktop = useDesktopStore();
+const fileStore = useFileStore();
 
 // Mapeo de iconos
 const iconComponents: Record<string, any> = {
   Folder,
   LayoutDashboard,
   Activity,
-  Settings
+  Settings,
+  HardDrive
 };
 
 // Drag State
@@ -66,7 +69,12 @@ const onMouseUp = () => {
 
 const handleClick = () => {
   if (!isDragging.value) {
-    desktop.openWindow(props.iconData.id);
+    if (props.iconData.type === 'drive' && props.iconData.path) {
+      desktop.openWindow('files');
+      fileStore.navigateToPath(props.iconData.path);
+    } else {
+      desktop.openWindow(props.iconData.id as any);
+    }
   }
 };
 
@@ -148,4 +156,5 @@ onUnmounted(() => {
 .icon-box.purple { background: linear-gradient(135deg, #a855f7, #6d28d9); }
 .icon-box.green { background: linear-gradient(135deg, #22c55e, #15803d); }
 .icon-box.grey { background: linear-gradient(135deg, #64748b, #334155); }
+.icon-box.orange { background: linear-gradient(135deg, #f97316, #c2410c); }
 </style>

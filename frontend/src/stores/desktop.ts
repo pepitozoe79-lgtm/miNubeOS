@@ -14,12 +14,14 @@ export interface WindowState {
 }
 
 export interface DesktopIcon {
-  id: WindowApp;
+  id: string;
   label: string;
   icon: string;
-  color: 'blue' | 'purple' | 'green' | 'grey';
+  color: 'blue' | 'purple' | 'green' | 'grey' | 'orange';
   x: number;
   y: number;
+  type?: 'app' | 'drive';
+  path?: string;
 }
 
 export const useDesktopStore = defineStore('desktop', {
@@ -43,6 +45,7 @@ export const useDesktopStore = defineStore('desktop', {
         monitor: { id: 'monitor', title: 'Monitor del Sistema', isOpen: false, zIndex: 10, isMinimized: false, isMaximized: false, x: -1, y: -1 },
       } as Record<WindowApp, WindowState>,
       desktopIcons: savedIcons ? JSON.parse(savedIcons) : defaultIcons as Record<string, DesktopIcon>,
+      dynamicIcons: {} as Record<string, DesktopIcon>,
       topZIndex: 100,
       gridSize: { x: 110, y: 120 }
     };
@@ -94,6 +97,13 @@ export const useDesktopStore = defineStore('desktop', {
     setWallpaper(url: string) {
       this.wallpaper = url;
       localStorage.setItem('nubeos_wallpaper', url);
+    },
+    setDynamicIcons(icons: DesktopIcon[]) {
+      const newIcons: Record<string, DesktopIcon> = {};
+      icons.forEach(icon => {
+        newIcons[icon.id] = icon;
+      });
+      this.dynamicIcons = newIcons;
     }
   }
 });

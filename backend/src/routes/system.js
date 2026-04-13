@@ -206,4 +206,52 @@ router.post('/shutdown', authMiddleware, adminMiddleware, async (req, res) => {
   }, 1000);
 });
 
+// New: Get external removable drives for desktop icons
+router.get('/external-drives', authMiddleware, (req, res) => {
+  if (process.platform !== 'linux') {
+    return res.json([]);
+  }
+
+  try {
+    const { execSync } = require('child_process');
+    // RM=1 (removable), HOTPLUG=1, TYPE=part, MOUNTPOINT (must be set)
+    const raw = execSync('lsblk -J -o NAME,LABEL,MOUNTPOINT,RM,HOTPLUG,MODEL,TYPE').toString();
+    const data = JSON.parse(raw);
+    
+    const drives = [];
+    data.blockdevices.forEach(disk => {
+      // Check partitions of removable disks
+      if (disk.rm === "1" || disk.hotplug === "1") {
+        if (disk.children) {
+          disk.children.forEach(part => {
+            if (part.mountpoint) {
+              drives.push({
+                id: `usb_${part.name}`,
+                label: part.label || part.name || disk.model || 'Unidad USB',
+                path: part.mountpoint,
+                icon: 'HardDrive',
+                color: 'orange',
+                type: 'drive'
+              });
+            }
+          });
+        } else if (disk.mountpoint) {
+          drives.push({
+            id: `usb_${disk.name}`,
+            label: disk.label || disk.name || disk.model || 'Unidad USB',
+            path: disk.mountpoint,
+            icon: 'HardDrive',
+            color: 'orange',
+            type: 'drive'
+          });
+        }
+      }
+    });
+
+    res.json(drives);
+  } catch (e) {
+    res.json([]);
+  }
+});
+
 module.exports = router;

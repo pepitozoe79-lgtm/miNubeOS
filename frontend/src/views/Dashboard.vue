@@ -67,15 +67,36 @@ const fetchStats = async () => {
   }
 };
 
+const fetchExternalDrives = async () => {
+  try {
+    const res = await axios.get('/api/system/external-drives');
+    // Map backend response to DesktopIcon format
+    const startX = 130; 
+    const colY = 20;
+    const dynamicIcons = res.data.map((drive: any, index: number) => ({
+      ...drive,
+      x: startX + Math.floor(index / 5) * 110,
+      y: (index % 5) * 120 + 20
+    }));
+    desktop.setDynamicIcons(dynamicIcons);
+  } catch (err) {
+    console.error('Error fetching external drives');
+  }
+};
+
 let statsInterval: any;
+let driveInterval: any;
 
 onMounted(() => {
   fetchStats();
+  fetchExternalDrives();
   statsInterval = setInterval(fetchStats, 5000);
+  driveInterval = setInterval(fetchExternalDrives, 10000); // Check every 10s
 });
 
 onUnmounted(() => {
   clearInterval(statsInterval);
+  clearInterval(driveInterval);
 });
 
 const handleLogout = () => {
@@ -193,6 +214,12 @@ const handleShutdown = async () => {
       <!-- Draggable Desktop Icons -->
       <DesktopIcon 
         v-for="icon in desktop.desktopIcons" 
+        :key="icon.id" 
+        :iconData="icon" 
+      />
+
+      <DesktopIcon 
+        v-for="icon in desktop.dynamicIcons" 
         :key="icon.id" 
         :iconData="icon" 
       />
