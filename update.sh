@@ -20,7 +20,7 @@ npm install --omit=dev
 echo "Actualizando dependencias del Frontend..."
 cd $INSTALL_DIR/frontend
 rm -rf node_modules
-npm install
+npm install --include=dev
 echo "Construyendo el nuevo Frontend..."
 npm run build
 

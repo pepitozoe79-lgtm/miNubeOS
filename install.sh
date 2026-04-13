@@ -93,7 +93,7 @@ chmod -R 755 $INSTALL_DIR/data
 cd $INSTALL_DIR/backend && npm install --omit=dev
 
 # Instalar dependencias del Frontend y construir
-cd $INSTALL_DIR/frontend && npm install
+cd $INSTALL_DIR/frontend && npm install --include=dev
 npm run build
 
 # Verificar que el build se generó correctamente
