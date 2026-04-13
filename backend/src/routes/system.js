@@ -216,22 +216,26 @@ router.get('/external-drives', authMiddleware, (req, res) => {
     const { execSync } = require('child_process');
     const fs = require('fs');
 
-    // 1. Get raw info about removable devices
-    const raw = execSync('lsblk -J -o NAME,LABEL,MOUNTPOINT,RM,HOTPLUG,MODEL,TYPE,FSTYPE').toString();
+    // 1. Get raw info about removable devices including TRAN (transport)
+    const raw = execSync('lsblk -J -o NAME,LABEL,MOUNTPOINT,RM,HOTPLUG,MODEL,TYPE,FSTYPE,TRAN').toString();
     const data = JSON.parse(raw);
     
     const drives = [];
     data.blockdevices.forEach(disk => {
-      if (disk.rm === "1" || disk.hotplug === "1") {
+      // BROAD DETECTION: Removable, Hotplug, OR Transport is USB
+      const isExternal = disk.rm === "1" || disk.hotplug === "1" || disk.tran === "usb";
+      
+      if (isExternal) {
         const parts = disk.children || [disk];
         
         parts.forEach(part => {
+          // Skip swap or empty parts without filesystem
           if (part.type !== 'part' && part.type !== 'disk') return;
 
           let mountPoint = part.mountpoint;
 
           // 2. AUTO-MOUNT LOGIC: If it has FSTYPE but no mountpoint, try to mount it
-          if (!mountPoint && part.fstype) {
+          if (!mountPoint && part.fstype && part.fstype !== 'swap') {
             const safeName = part.name.replace(/[^a-zA-Z0-9]/g, '');
             const targetDir = `/media/nubeos/${safeName}`;
             
@@ -239,7 +243,7 @@ router.get('/external-drives', authMiddleware, (req, res) => {
               if (!fs.existsSync('/media/nubeos')) execSync('sudo mkdir -p /media/nubeos');
               if (!fs.existsSync(targetDir)) execSync(`sudo mkdir -p ${targetDir}`);
               
-              // Try mounting with common options
+              // Mounting with permissions
               execSync(`sudo mount /dev/${part.name} ${targetDir} -o uid=1000,gid=1000,umask=000 || sudo mount /dev/${part.name} ${targetDir}`);
               mountPoint = targetDir;
             } catch (mountError) {
