@@ -875,12 +875,31 @@ const handleItemClick = (id: string) => {
 .info-row .value { font-size: 0.85rem; font-weight: 700; color: #1e293b; }
 .info-row .value.code { font-family: monospace; background: #f1f5f9; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid #e2e8f0; }
 
-.btn-refresh { background: #f1f5f9; color: #64748b; padding: 0.5rem; border-radius: 8px; }
-.btn-refresh:hover { background: #e2e8f0; color: #1e293b; }
-.mt-1 { margin-top: 1.5rem; }
+.config-pane { background: #334155 !important; color: white; }
+.card-header h3 { color: white !important; }
+.sidebar-title { color: #cbd5e1; }
+.iface-card { color: #cbd5e1; }
+.iface-name { color: white; }
 
-.cp-input { cursor: text !important; pointer-events: auto !important; }
-.cp-input:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1); }
+.form-group label { color: #f8fafc !important; font-weight: 700; font-size: 0.9rem; margin-bottom: 0.5rem; display: block; }
+.cp-input { 
+  background: white !important; 
+  color: #0f172a !important; 
+  border: 2px solid #6366f1 !important; 
+  padding: 0.8rem !important; 
+  font-weight: 600; 
+  font-size: 1rem !important;
+}
+.cp-input::placeholder { color: #94a3b8; }
+
+.toggle-group { background: #1e293b; padding: 0.4rem; }
+.toggle-group button { color: #94a3b8; }
+.toggle-group button.active { background: #6366f1; color: white; }
+
+.dhcp-info { background: rgba(255,255,255,0.05); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.1); }
+.current-ip { color: #818cf8; font-weight: 800; }
+
+.warning-box { background: #450a0a; border: 1px solid #991b1b; color: #fecaca; }
 
 .network-layout { display: grid; grid-template-columns: 200px 1fr; gap: 1.5rem; }
 .iface-sidebar { display: flex; flex-direction: column; gap: 0.5rem; padding: 1rem; height: fit-content; }
