@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, nextTick, computed, watch } from 'vue';
+import axios from 'axios';
 import { useFileStore } from '../stores/files';
+import { useDesktopStore } from '../stores/desktop';
 import type { FileItem } from '../stores/files';
 import { 
   Folder, File, FileText, FileImage, FileVideo, 
@@ -12,6 +14,7 @@ import {
 } from 'lucide-vue-next';
 
 const fileStore = useFileStore();
+const desktop = useDesktopStore();
 const selectedItems = ref<string[]>([]);
 const viewMode = ref<'grid' | 'list' | 'details'>('grid');
 const showSidebar = ref(true);
@@ -37,13 +40,15 @@ const fetchDrives = async () => {
     externalDrives.value = res.data;
   } catch (err) {
     console.error('Error fetching drives for sidebar');
+    // Fallback using desktop icons
+    externalDrives.value = Object.values(desktop.dynamicIcons).filter(i => i.type === 'drive');
   }
 };
 
 onMounted(async () => {
-  await fileStore.fetchFiles();
+  await fileStore.fetchFiles(fileStore.currentPath);
   await fileStore.fetchFolderTree();
-  fetchDrives();
+  await fetchDrives();
   window.addEventListener('click', closeContextMenu);
   window.addEventListener('keydown', handleGlobalKeydown);
 });
