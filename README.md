@@ -38,10 +38,18 @@ curl -fsSL https://raw.githubusercontent.com/elpato001/NubeOs/main/install.sh | 
 
 ### Desinstalar NubeOS (Linux)
 
-Si deseas eliminar NubeOS por completo de tu sistema Linux:
+Si deseas eliminar NubeOS por completo de tu sistema Linux (incluyendo servicios, archivos y contenedores de aplicaciones):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/elpato001/NubeOs/main/uninstall.sh | sudo bash
+```
+
+### Instalación Limpia desde Cero (Linux)
+
+Si quieres desinstalar y volver a instalar NubeOS en un solo paso para resolver problemas:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/elpato001/NubeOs/main/uninstall.sh | sudo bash && curl -fsSL https://raw.githubusercontent.com/elpato001/NubeOs/main/install.sh | sudo bash
 ```
 
 ### Opción Rápida (Windows)

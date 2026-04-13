@@ -39,6 +39,19 @@ systemctl daemon-reload
 
 # 3. Eliminar archivos de la aplicación
 echo -e "${BLUE}[2/3] Eliminando archivos de la aplicación en /opt/nubeos...${NC}"
+
+# Intentar detener y eliminar contenedores de Docker gestionados por NubeOS
+if command -v docker &> /dev/null; then
+    echo -e "${YELLOW}Buscando contenedores de aplicaciones NubeOS...${NC}"
+    CONTAINERS=$(docker ps -a --filter "name=nubeos-" --format "{{.Names}}")
+    if [ ! -z "$CONTAINERS" ]; then
+        echo -e "${YELLOW}Deteniendo y eliminando contenedores:${NC}"
+        echo "$CONTAINERS"
+        docker stop $CONTAINERS &>/dev/null || true
+        docker rm $CONTAINERS &>/dev/null || true
+    fi
+fi
+
 rm -rf /opt/nubeos
 
 # 4. Limpieza
