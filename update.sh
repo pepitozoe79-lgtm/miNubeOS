@@ -19,9 +19,10 @@ npm install --omit=dev
 # 3. Update Frontend dependencies and rebuild
 echo "Actualizando dependencias del Frontend..."
 cd $INSTALL_DIR/frontend
+rm -rf node_modules
 npm install
 echo "Construyendo el nuevo Frontend..."
-npx vite build || ./node_modules/.bin/vite build
+npm run build
 
 if [ ! -d "dist" ]; then
     echo "ERROR: No se pudo generar la carpeta dist"

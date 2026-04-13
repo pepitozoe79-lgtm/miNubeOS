@@ -94,13 +94,13 @@ cd $INSTALL_DIR/backend && npm install --omit=dev
 
 # Instalar dependencias del Frontend y construir
 cd $INSTALL_DIR/frontend && npm install
-npx vite build || ./node_modules/.bin/vite build
+npm run build
 
 # Verificar que el build se generó correctamente
 if [ ! -d "$INSTALL_DIR/frontend/dist" ]; then
     echo -e "${RED}[ERROR] El build del frontend no se generó correctamente.${NC}"
-    echo -e "${YELLOW}Intentando build sin type-check...${NC}"
-    npx vite build
+    echo -e "${YELLOW}Intentando build de nuevo...${NC}"
+    npm run build
 fi
 
 echo -e "${GREEN}Build del Frontend completado.${NC}"
