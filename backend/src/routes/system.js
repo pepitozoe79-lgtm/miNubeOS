@@ -32,17 +32,21 @@ const upload = multer({
 
 router.get('/stats', authMiddleware, async (req, res) => {
   try {
-    const [cpu, mem, disk] = await Promise.all([
+    const [cpu, mem, disk, net, os] = await Promise.all([
       si.currentLoad(),
       si.mem(),
-      si.fsSize()
+      si.fsSize(),
+      si.networkInterfaceDefault(),
+      si.osInfo()
     ]);
+
+    const netInfo = await si.networkInterfaces();
+    const primaryNet = netInfo.find(n => n.iface === net) || netInfo[0];
 
     let version = '1.0.0';
     try {
       version = require('child_process').execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
     } catch (e) {
-      // Fallback version if git fails or not a repo
       const pkg = require('../../package.json');
       version = pkg.version || '1.0.0';
     }
@@ -50,15 +54,17 @@ router.get('/stats', authMiddleware, async (req, res) => {
     res.json({
       cpu: Math.round(cpu.currentLoad),
       ram: Math.round((mem.active / mem.total) * 100),
-      disk: Math.round((disk[0].use)),
+      disk: Math.round((disk[3]?.use || disk[0]?.use || 0)),
       version: version,
-      sessionID: process.uptime(), // Using uptime as a proxy for session freshness
+      hostname: os.hostname,
+      ip: primaryNet?.ip4 || '127.0.0.1',
       details: {
         memTotal: mem.total,
         memUsed: mem.active,
-        diskTotal: disk[0].size,
-        diskUsed: disk[0].used,
-        uptime: si.time().uptime
+        diskTotal: disk[3]?.size || disk[0]?.size,
+        diskUsed: disk[3]?.used || disk[0]?.used,
+        uptime: si.time().uptime,
+        os: os.distro + ' ' + os.release
       }
     });
   } catch (error) {
