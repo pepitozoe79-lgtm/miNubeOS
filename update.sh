@@ -2,7 +2,8 @@
 # NubeOS Update Script - Asynchronous Version
 
 set -e
-INSTALL_DIR="/opt/nubeos"
+# Detectar directorio raíz del proyecto dinámicamente
+INSTALL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 LOG_FILE="$INSTALL_DIR/data/update.log"
 STATUS_FILE="$INSTALL_DIR/data/update_status.json"
 
@@ -21,7 +22,7 @@ set_status() {
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "--- Iniciando actualización de NubeOS: $(date) ---"
-cd $INSTALL_DIR
+cd "$INSTALL_DIR"
 
 # 1. Sync with GitHub
 set_status "syncing" 10 "Sincronizando archivos con GitHub..."
