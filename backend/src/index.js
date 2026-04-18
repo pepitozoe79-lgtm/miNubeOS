@@ -13,6 +13,7 @@ const systemRoutes = require('./routes/system');
 const networkRoutes = require('./routes/network');
 const storageRoutes = require('./routes/storage');
 const { authMiddleware } = require('./middleware/auth');
+const { attachTerminalWebSocket } = require('./services/terminalService');
 
 dotenv.config();
 
@@ -86,5 +87,8 @@ if (fs.existsSync(frontendDistPath)) {
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 NubeOS Backend running on http://localhost:${PORT}`);
 });
+
+// Attach Terminal WebSocket to HTTP server
+attachTerminalWebSocket(server);
 
 server.timeout = 600000; // 10 minutes timeout for large uploads

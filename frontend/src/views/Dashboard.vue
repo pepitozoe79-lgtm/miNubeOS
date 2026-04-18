@@ -15,7 +15,8 @@ import {
   LayoutDashboard,
   LogOut,
   RotateCcw,
-  Power
+  Power,
+  Terminal
 } from 'lucide-vue-next';
 import Window from '../components/Window.vue';
 import DesktopIcon from '../components/DesktopIcon.vue';
@@ -23,6 +24,7 @@ import Files from './Files.vue';
 import Apps from './Apps.vue';
 import Home from './Home.vue';
 import ControlPanel from './ControlPanel.vue';
+import TerminalView from './Terminal.vue';
 
 const auth = useAuthStore();
 const desktop = useDesktopStore();
@@ -155,6 +157,7 @@ const handleShutdown = async () => {
           <Folder v-if="win.id === 'files'" :size="16" />
           <LayoutDashboard v-else-if="win.id === 'apps'" :size="16" />
           <Activity v-else-if="win.id === 'monitor'" :size="16" />
+          <Terminal v-else-if="win.id === 'terminal'" :size="16" />
           <Settings v-else :size="16" />
           <span class="taskbar-label">{{ win.title }}</span>
         </button>
@@ -239,6 +242,10 @@ const handleShutdown = async () => {
 
       <Window appId="admin" title="Panel de Control">
         <ControlPanel />
+      </Window>
+
+      <Window appId="terminal" title="Terminal">
+        <TerminalView />
       </Window>
       
       <!-- Resource Widget -->
