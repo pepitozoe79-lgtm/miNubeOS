@@ -212,10 +212,7 @@ const formatGB = (bytes: number) => {
     </header>
 
     <main class="desktop-area">
-      <div class="desktop-watermark">
-        <img src="../assets/logo.png" alt="" class="watermark-logo" />
-        <span class="watermark-text">NubeOS</span>
-      </div>
+      <!-- Watermark removed as requested -->
 
       <DesktopIcon v-for="icon in desktop.desktopIcons" :key="icon.id" :iconData="icon" />
       <DesktopIcon v-for="icon in desktop.dynamicIcons" :key="icon.id" :iconData="icon" />
@@ -328,21 +325,6 @@ const formatGB = (bytes: number) => {
   overflow: hidden;
   padding: 1rem;
 }
-
-.desktop-watermark {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.08;
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.watermark-logo { width: 280px; filter: grayscale(1) brightness(2); }
-.watermark-text { font-size: 4rem; font-weight: 900; letter-spacing: 0.8rem; }
 
 /* Widgets */
 .resource-widget {
