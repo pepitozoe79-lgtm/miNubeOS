@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { Folder, LayoutDashboard, Activity, Settings, HardDrive, Terminal } from 'lucide-vue-next';
+import { Folder, LayoutDashboard, Activity, Settings, HardDrive } from 'lucide-vue-next';
 import { useDesktopStore, type DesktopIcon } from '../stores/desktop';
 import { useFileStore } from '../stores/files';
 
@@ -17,8 +17,7 @@ const iconComponents: Record<string, any> = {
   LayoutDashboard,
   Activity,
   Settings,
-  HardDrive,
-  Terminal
+  HardDrive
 };
 
 // Drag State
@@ -158,5 +157,4 @@ onUnmounted(() => {
 .icon-box.green { background: linear-gradient(135deg, #22c55e, #15803d); }
 .icon-box.grey { background: linear-gradient(135deg, #64748b, #334155); }
 .icon-box.orange { background: linear-gradient(135deg, #f97316, #c2410c); }
-.icon-box.dark { background: linear-gradient(135deg, #1e293b, #0f172a); border: 1px solid rgba(255,255,255,0.1); }
 </style>

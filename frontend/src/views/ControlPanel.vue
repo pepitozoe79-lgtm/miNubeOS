@@ -382,8 +382,6 @@ const handleItemClick = (id: string) => {
   } else if (['volume', 'storage_pool', 'hdd', 'vdisk', 'ext_storage'].includes(id)) {
     activeSubView.value = 'storage';
     fetchStorage();
-  } else if (id === 'terminal') {
-    desktop.openWindow('terminal');
   }
 };
 </script>

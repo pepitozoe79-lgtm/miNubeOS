@@ -15,8 +15,7 @@ import {
   LayoutDashboard,
   LogOut,
   RotateCcw,
-  Power,
-  Terminal as TerminalIcon
+  Power
 } from 'lucide-vue-next';
 import Window from '../components/Window.vue';
 import DesktopIcon from '../components/DesktopIcon.vue';
@@ -24,14 +23,10 @@ import Files from './Files.vue';
 import Apps from './Apps.vue';
 import Home from './Home.vue';
 import ControlPanel from './ControlPanel.vue';
-import Terminal from './Terminal.vue';
-import NotificationCenter from '../components/NotificationCenter.vue';
-import { useNotificationStore } from '../stores/notifications';
 
 const auth = useAuthStore();
 const desktop = useDesktopStore();
 const router = useRouter();
-const notifStore = useNotificationStore();
 
 const stats = ref({ cpu: 0, ram: 0, disk: 0 });
 const showUserMenu = ref(false);
@@ -95,7 +90,6 @@ let driveInterval: any;
 onMounted(() => {
   fetchStats();
   fetchExternalDrives();
-  notifStore.init();
   statsInterval = setInterval(fetchStats, 5000);
   driveInterval = setInterval(fetchExternalDrives, 10000); // Check every 10s
 });
@@ -131,29 +125,6 @@ const handleShutdown = async () => {
     }
   }
 };
-
-// Toast Logic
-const activeToasts = ref<any[]>([]);
-const { socket } = notifStore;
-
-// We watch the notifStore's addNotification indirectly by listening to the socket or watching the array
-// But Pinia actions are easier to watch or just hook into.
-// Let's use a simple interval or a more reactive way.
-import { watch } from 'vue';
-watch(() => notifStore.notifications, (newVal, oldVal) => {
-  if (newVal.length > (oldVal?.length || 0)) {
-    const newNotif = newVal[0];
-    const toastId = Date.now();
-    activeToasts.value.push({ ...newNotif, toastId });
-    setTimeout(() => {
-      activeToasts.value = activeToasts.value.filter(t => t.toastId !== toastId);
-    }, 5000);
-  }
-}, { deep: false });
-
-const removeToast = (toastId: number) => {
-  activeToasts.value = activeToasts.value.filter(t => t.toastId !== toastId);
-};
 </script>
 
 <template>
@@ -184,7 +155,6 @@ const removeToast = (toastId: number) => {
           <Folder v-if="win.id === 'files'" :size="16" />
           <LayoutDashboard v-else-if="win.id === 'apps'" :size="16" />
           <Activity v-else-if="win.id === 'monitor'" :size="16" />
-          <TerminalIcon v-else-if="win.id === 'terminal'" :size="16" />
           <Settings v-else :size="16" />
           <span class="taskbar-label">{{ win.title }}</span>
         </button>
@@ -192,7 +162,7 @@ const removeToast = (toastId: number) => {
       
       <div class="top-right">
         <button class="icon-btn"><Search :size="18"/></button>
-        <NotificationCenter />
+        <button class="icon-btn"><Bell :size="18"/></button>
         <div class="time">{{ new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</div>
         
         <div class="user-pill-container">
@@ -270,10 +240,6 @@ const removeToast = (toastId: number) => {
       <Window appId="admin" title="Panel de Control">
         <ControlPanel />
       </Window>
-
-      <Window appId="terminal" title="Terminal del Sistema">
-        <Terminal />
-      </Window>
       
       <!-- Resource Widget -->
       <aside class="resource-widget glass">
@@ -294,30 +260,6 @@ const removeToast = (toastId: number) => {
           <div class="val">{{ stats.disk }}%</div>
         </div>
       </aside>
-
-      <!-- Toast Layer -->
-      <div class="toast-layer">
-        <TransitionGroup name="toast">
-          <div 
-            v-for="toast in activeToasts" 
-            :key="toast.toastId" 
-            class="toast-item glass"
-            :class="toast.type"
-            @click="removeToast(toast.toastId)"
-          >
-            <div class="toast-icon">
-              <!-- Inline icon selection to avoid complex component logic here -->
-              <Activity v-if="toast.type === 'info'" :size="18" />
-              <LogOut v-else-if="toast.type === 'success'" :size="18" />
-              <Bell v-else :size="18" />
-            </div>
-            <div class="toast-content">
-              <div class="toast-title">{{ toast.title }}</div>
-              <div class="toast-message">{{ toast.message }}</div>
-            </div>
-          </div>
-        </TransitionGroup>
-      </div>
     </main>
   </div>
 </template>
@@ -608,72 +550,4 @@ const removeToast = (toastId: number) => {
 }
 
 .val { font-weight: 700; text-align: right; }
-
-/* ── Toasts ── */
-.toast-layer {
-  position: absolute;
-  top: 4rem;
-  right: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  z-index: 2000;
-  pointer-events: none;
-}
-
-.toast-item {
-  width: 280px;
-  padding: 1rem;
-  display: flex;
-  gap: 1rem;
-  pointer-events: auto;
-  cursor: pointer;
-  border-left: 4px solid var(--primary);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-}
-
-.toast-item.success { border-left-color: #22c55e; }
-.toast-item.warning { border-left-color: #eab308; }
-.toast-item.error { border-left-color: #ef4444; }
-
-.toast-icon {
-  width: 32px;
-  height: 32px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.toast-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.toast-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  margin-bottom: 2px;
-}
-
-.toast-message {
-  font-size: 0.78rem;
-  color: var(--text-muted);
-  line-height: 1.3;
-}
-
-/* Animations */
-.toast-enter-active, .toast-leave-active {
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.toast-enter-from {
-  opacity: 0;
-  transform: translateX(50px) scale(0.9);
-}
-.toast-leave-to {
-  opacity: 0;
-  transform: translateX(20px);
-}
 </style>

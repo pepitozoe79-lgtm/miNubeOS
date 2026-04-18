@@ -142,13 +142,6 @@ router.post('/update', authMiddleware, adminMiddleware, async (req, res) => {
 
   console.log(`[SYS] Iniciando proceso de actualización asíncrono: ${command}`);
 
-  const { notifyAll } = require('../services/notificationService');
-  notifyAll({
-    title: 'Actualización',
-    message: 'Se ha iniciado el proceso de actualización del sistema.',
-    type: 'info'
-  });
-
   res.json({ 
     success: true, 
     message: 'La actualización se ha iniciado correctamente en el servidor. El sistema sincronizará los archivos de GitHub, reconstruirá el frontend y se reiniciará automáticamente en 2-4 minutos.'
