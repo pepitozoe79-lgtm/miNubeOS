@@ -38,11 +38,21 @@ router.get('/stats', authMiddleware, async (req, res) => {
       si.fsSize()
     ]);
 
+    let version = '1.0.0';
+    try {
+      version = require('child_process').execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    } catch (e) {
+      // Fallback version if git fails or not a repo
+      const pkg = require('../../package.json');
+      version = pkg.version || '1.0.0';
+    }
+
     res.json({
       cpu: Math.round(cpu.currentLoad),
       ram: Math.round((mem.active / mem.total) * 100),
       disk: Math.round((disk[0].use)),
-      version: require('child_process').execSync('git rev-parse --short HEAD').toString().trim(),
+      version: version,
+      sessionID: process.uptime(), // Using uptime as a proxy for session freshness
       details: {
         memTotal: mem.total,
         memUsed: mem.active,

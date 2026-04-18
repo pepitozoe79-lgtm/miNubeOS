@@ -60,9 +60,23 @@ const handleTaskbarClick = (appId: WindowApp) => {
   }
 };
 
+const currentVersion = ref<string | null>(null);
+
 const fetchStats = async () => {
   try {
     const res = await axios.get('/api/system/stats');
+    
+    // Auto-reload if version changed (update finished)
+    if (currentVersion.value && res.data.version !== currentVersion.value) {
+      console.log('🔄 Nueva versión detectada, recargando...');
+      window.location.reload();
+      return;
+    }
+    
+    if (!currentVersion.value) {
+      currentVersion.value = res.data.version;
+    }
+    
     stats.value = res.data;
   } catch (err) {
     console.error('Error fetching stats');
