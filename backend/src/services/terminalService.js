@@ -10,6 +10,7 @@ const { spawn } = require('child_process');
 const jwt = require('jsonwebtoken');
 const WebSocket = require('ws');
 const path = require('path');
+const fs = require('fs');
 
 // Track active sessions for cleanup
 const activeSessions = new Map();
@@ -50,12 +51,32 @@ function attachTerminalWebSocket(server) {
     }
 
     // --- 2. Spawn Shell Process ---
-    const isLinux = process.platform === 'linux';
-    const shell = isLinux ? '/bin/bash' : 'powershell.exe';
-    const shellArgs = isLinux ? ['--login'] : ['-NoLogo', '-NoProfile'];
+    const isWin = process.platform === 'win32';
+    const isLinux = process.platform === 'linux' || process.platform === 'darwin';
+    
+    let shell = '/bin/bash';
+    let shellArgs = ['-l', '-i']; // Login + Interactive for better prompt support
+    
+    if (isWin) {
+      // User requested a Linux terminal, so we try WSL first on Windows.
+      // If WSL is not available, this might fail, but it's the closest to "Linux terminal".
+      shell = 'wsl.exe';
+      shellArgs = ['~'];
+    } else {
+      // On Linux/Mac, detect the best shell
+      if (process.env.SHELL && fs.existsSync(process.env.SHELL)) {
+        shell = process.env.SHELL;
+      } else if (!fs.existsSync('/bin/bash')) {
+        shell = '/bin/sh';
+      }
+    }
+
     const homeDir = isLinux 
-      ? (process.env.HOME || '/root') 
+      ? (process.env.HOME || (process.getuid && process.getuid() === 0 ? '/root' : '/tmp')) 
       : (process.env.USERPROFILE || 'C:\\');
+    
+    // Fallback for Windows if WSL is not preferred or fails
+    // But since the user explicitly asked for Linux, we stick to WSL/bash logic.
 
     let proc;
     try {
@@ -70,9 +91,17 @@ function attachTerminalWebSocket(server) {
         stdio: ['pipe', 'pipe', 'pipe'],
       });
     } catch (err) {
-      ws.send(JSON.stringify({ type: 'error', data: `No se pudo iniciar la shell: ${err.message}` }));
-      ws.close(4004, 'Shell spawn failed');
-      return;
+      // If WSL failed on Windows, fallback to PowerShell as a last resort
+      if (isWin && shell === 'wsl.exe') {
+        console.warn('[Terminal] WSL failed, falling back to powershell.exe');
+        shell = 'powershell.exe';
+        shellArgs = ['-NoLogo', '-NoProfile'];
+        proc = spawn(shell, shellArgs, { cwd: homeDir, stdio: ['pipe', 'pipe', 'pipe'] });
+      } else {
+        ws.send(JSON.stringify({ type: 'error', data: `No se pudo iniciar la shell (${shell}): ${err.message}` }));
+        ws.close(4004, 'Shell spawn failed');
+        return;
+      }
     }
 
     const sessionId = `${user.username}-${Date.now()}`;
@@ -133,10 +162,13 @@ function attachTerminalWebSocket(server) {
         
         if (msg.type === 'input' && proc.stdin.writable) {
           proc.stdin.write(msg.data);
-        } else if (msg.type === 'resize') {
-          // For spawn-based shells, we can't truly resize, 
-          // but we store the info for future use
-          // (node-pty would support proc.resize(cols, rows))
+        } else if (msg.type === 'resize' && proc.stdin.writable) {
+          // Workaround for non-PTY terminals: send stty command to update shell's view of dimensions
+          // This only works on Linux/Unix-like shells (including WSL)
+          if (isLinux || (isWin && shell === 'wsl.exe')) {
+            const cmd = `\nstty rows ${msg.rows} cols ${msg.cols} 2>/dev/null\n`;
+            proc.stdin.write(cmd);
+          }
         }
       } catch (e) {
         // If not JSON, treat as raw input
