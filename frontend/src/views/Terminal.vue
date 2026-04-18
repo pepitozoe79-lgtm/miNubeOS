@@ -247,21 +247,9 @@ defineExpose({ handleFit });
 
 <template>
   <div class="terminal-container">
-    <!-- Terminal Toolbar -->
+    <!-- Terminal Header (Status & Actions) -->
     <div class="terminal-toolbar">
       <div class="toolbar-left">
-        <div class="toolbar-dots">
-          <span class="dot red"></span>
-          <span class="dot yellow"></span>
-          <span class="dot green"></span>
-        </div>
-        <span class="toolbar-title">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="4 17 10 11 4 5"></polyline>
-            <line x1="12" y1="19" x2="20" y2="19"></line>
-          </svg>
-          NubeOS Terminal
-        </span>
         <span class="connection-badge" :class="{ connected: isConnected, connecting: isConnecting }">
           <span class="badge-dot"></span>
           {{ isConnecting ? 'Conectando...' : (isConnected ? 'Conectado' : 'Desconectado') }}
@@ -317,7 +305,8 @@ defineExpose({ handleFit });
   width: 100%;
   background: #0c0e14;
   overflow: hidden;
-  margin: -1.5rem;
+  margin: -1.5rem; /* Maintain bleed to edges of window padding */
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* ── Toolbar ── */
@@ -325,10 +314,10 @@ defineExpose({ handleFit });
   display: flex;
   justify-content: space-between;
   align-items: center;
-  height: 40px;
-  min-height: 40px;
+  height: 36px;
+  min-height: 36px;
   padding: 0 1rem;
-  background: linear-gradient(180deg, #161b22, #0d1117);
+  background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid rgba(88, 166, 255, 0.08);
   user-select: none;
 }
@@ -337,32 +326,6 @@ defineExpose({ handleFit });
   display: flex;
   align-items: center;
   gap: 0.75rem;
-}
-
-.toolbar-dots {
-  display: flex;
-  gap: 6px;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  opacity: 0.8;
-}
-
-.dot.red { background: #ff5f57; }
-.dot.yellow { background: #febc2e; }
-.dot.green { background: #28c840; }
-
-.toolbar-title {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #8b949e;
-  letter-spacing: 0.02em;
 }
 
 .connection-badge {
