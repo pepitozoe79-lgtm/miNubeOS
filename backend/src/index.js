@@ -16,10 +16,21 @@ const { authMiddleware } = require('./middleware/auth');
 
 dotenv.config();
 
+const http = require('http');
+const { Server } = require('socket.io');
+
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// ... (Existing Middleware)
 app.use(helmet({
   contentSecurityPolicy: false
 }));
@@ -28,7 +39,7 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// API Routes (must be defined BEFORE static file serving)
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/apps', appsRoutes);
@@ -36,6 +47,13 @@ app.use('/api/users', usersRoutes);
 app.use('/api/system', systemRoutes);
 app.use('/api/network', networkRoutes);
 app.use('/api/storage', storageRoutes);
+
+// Socket Control for Terminal
+const { initTerminalSocket } = require('./services/terminalService');
+const { initNotificationService } = require('./services/notificationService');
+
+initTerminalSocket(io);
+initNotificationService(io);
 
 // Protected Sample Route
 app.get('/api/me', authMiddleware, (req, res) => {
@@ -61,8 +79,6 @@ const frontendDistPath = path.join(__dirname, '../../frontend/dist');
 if (fs.existsSync(frontendDistPath)) {
   console.log('📦 Serving frontend from:', frontendDistPath);
 
-  // Serve static assets (js, css, images, etc.)
-  // Disable cache to ensure updates are seen immediately
   app.use(express.static(frontendDistPath, {
     etag: false,
     maxAge: 0,
@@ -73,9 +89,7 @@ if (fs.existsSync(frontendDistPath)) {
     }
   }));
 
-  // SPA Fallback: For any request that doesn't match an API route or
-  // static file, serve index.html so Vue Router can handle client-side routing
-  app.get('{*path}', (req, res) => {
+  app.get('*', (req, res) => {
     res.sendFile(path.join(frontendDistPath, 'index.html'));
   });
 } else {
@@ -83,7 +97,7 @@ if (fs.existsSync(frontendDistPath)) {
   console.log('   (In development, use Vite dev server for the frontend)');
 }
 
-const server = app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 NubeOS Backend running on http://localhost:${PORT}`);
 });
 

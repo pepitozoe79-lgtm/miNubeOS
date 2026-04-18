@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 
-export type WindowApp = 'files' | 'apps' | 'admin' | 'settings' | 'monitor';
+export type WindowApp = 'files' | 'apps' | 'admin' | 'settings' | 'monitor' | 'terminal';
 
 export interface WindowState {
   id: WindowApp;
@@ -17,7 +17,7 @@ export interface DesktopIcon {
   id: string;
   label: string;
   icon: string;
-  color: 'blue' | 'purple' | 'green' | 'grey' | 'orange';
+  color: 'blue' | 'purple' | 'green' | 'grey' | 'orange' | 'dark';
   x: number;
   y: number;
   type?: 'app' | 'drive';
@@ -32,7 +32,8 @@ export const useDesktopStore = defineStore('desktop', {
       files: { id: 'files', label: 'Archivos', icon: 'Folder', color: 'blue', x: 20, y: 20 },
       apps: { id: 'apps', label: 'App Center', icon: 'LayoutDashboard', color: 'purple', x: 20, y: 140 },
       monitor: { id: 'monitor', label: 'Monitor', icon: 'Activity', color: 'green', x: 20, y: 260 },
-      admin: { id: 'admin', label: 'Panel Control', icon: 'Settings', color: 'grey', x: 20, y: 380 },
+      terminal: { id: 'terminal', label: 'Terminal', icon: 'Terminal', color: 'dark', x: 20, y: 380 },
+      admin: { id: 'admin', label: 'Panel Control', icon: 'Settings', color: 'grey', x: 20, y: 500 },
     };
 
     return {
@@ -43,6 +44,7 @@ export const useDesktopStore = defineStore('desktop', {
         admin: { id: 'admin', title: 'Panel de Control', isOpen: false, zIndex: 10, isMinimized: false, isMaximized: false, x: -1, y: -1 },
         settings: { id: 'settings', title: 'Configuración', isOpen: false, zIndex: 10, isMinimized: false, isMaximized: false, x: -1, y: -1 },
         monitor: { id: 'monitor', title: 'Monitor del Sistema', isOpen: false, zIndex: 10, isMinimized: false, isMaximized: false, x: -1, y: -1 },
+        terminal: { id: 'terminal', title: 'Terminal del Sistema', isOpen: false, zIndex: 10, isMinimized: false, isMaximized: false, x: -1, y: -1 },
       } as Record<WindowApp, WindowState>,
       desktopIcons: savedIcons ? JSON.parse(savedIcons) : defaultIcons as Record<string, DesktopIcon>,
       dynamicIcons: {} as Record<string, DesktopIcon>,
