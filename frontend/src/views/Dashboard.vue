@@ -244,7 +244,7 @@ const handleShutdown = async () => {
         <ControlPanel />
       </Window>
 
-      <Window appId="terminal" title="Terminal">
+      <Window appId="terminal" title="Terminal" :noPadding="true">
         <TerminalView />
       </Window>
       

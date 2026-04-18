@@ -6,6 +6,7 @@ import { useDesktopStore, type WindowApp } from '../stores/desktop';
 const props = defineProps<{
   appId: WindowApp;
   title: string;
+  noPadding?: boolean;
 }>();
 
 const desktop = useDesktopStore();
@@ -82,7 +83,7 @@ onUnmounted(() => {
         <button @click.stop="handleClose" class="control-btn close" title="Cerrar"><X :size="14"/></button>
       </div>
     </div>
-    <div class="window-content">
+    <div class="window-content" :class="{ 'no-padding': noPadding }">
       <slot></slot>
     </div>
   </div>
@@ -175,5 +176,9 @@ onUnmounted(() => {
   background: var(--bg-main);
   overflow: auto;
   padding: 1.5rem;
+}
+
+.window-content.no-padding {
+  padding: 0;
 }
 </style>

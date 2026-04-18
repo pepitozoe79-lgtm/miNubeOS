@@ -305,7 +305,6 @@ defineExpose({ handleFit });
   width: 100%;
   background: #0c0e14;
   overflow: hidden;
-  margin: -1.5rem; /* Maintain bleed to edges of window padding */
   border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
