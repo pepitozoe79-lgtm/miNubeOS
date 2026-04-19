@@ -126,6 +126,8 @@
           </div>
         </aside>
       </Transition>
+
+      <NotificationCenter />
     </main>
   </div>
 </template>
@@ -152,11 +154,13 @@ import {
 } from 'lucide-vue-next';
 import Window from '../components/Window.vue';
 import DesktopIcon from '../components/DesktopIcon.vue';
+import NotificationCenter from '../components/NotificationCenter.vue';
 import Files from './Files.vue';
 import Apps from './Apps.vue';
 import Home from './Home.vue';
 import ControlPanel from './ControlPanel.vue';
 import TerminalView from './Terminal.vue';
+import { useNotificationStore } from '../stores/notification';
 
 // State
 const state = reactive({
@@ -170,6 +174,7 @@ const state = reactive({
 
 const auth = useAuthStore();
 const desktop = useDesktopStore();
+const notification = useNotificationStore();
 const router = useRouter();
 
 // Computed
@@ -211,12 +216,16 @@ const fetchStats = async () => {
       window.location.reload();
       return;
     }
-    if (!state.currentVersion) state.currentVersion = data.version;
+    if (!state.currentVersion) {
+      state.currentVersion = data.version;
+      notification.success('Sistema Conectado', `Bienvenido a ${data.hostname}`);
+    }
     state.stats = data;
     state.dashboardError = null;
   } catch (err: any) {
     console.error('Error fetching stats:', err);
     state.dashboardError = 'Error conectando al sistema';
+    notification.error('Error de Comunicación', 'No se pudieron sincronizar las estadísticas del sistema.');
   }
 };
 
