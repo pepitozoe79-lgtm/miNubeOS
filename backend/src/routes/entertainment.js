@@ -153,9 +153,14 @@ router.post('/admin/scan', authMiddleware, (req, res) => {
       const files = fs.readdirSync(libPath);
       files.forEach(file => {
         const ext = path.extname(file).toLowerCase();
-        if (['.mp4', '.mkv', '.webm', '.avi'].includes(ext)) {
+        const isVideo = ['.mp4', '.mkv', '.webm', '.avi'].includes(ext);
+        const isAudio = ['.mp3', '.wav', '.flac', '.aac'].includes(ext);
+
+        if (isVideo || isAudio) {
           const filePath = path.join(libPath, file);
           const fileNameNoExt = path.parse(file).name;
+          const isSeries = fileNameNoExt.match(/S\d{2}E\d{2}|[S\s]\d+E\d+|\d+x\d+/i);
+          const type = isVideo ? (isSeries ? 'series' : 'movie') : 'music';
           
           const yearMatch = fileNameNoExt.match(/\((19|20)\d{2}\)|(19|20)\d{2}/);
           const year = yearMatch ? parseInt(yearMatch[0].replace(/[()]/g, '')) : new Date().getFullYear();
@@ -178,8 +183,8 @@ router.post('/admin/scan', authMiddleware, (req, res) => {
           try {
             db.prepare(`
               INSERT OR IGNORE INTO eo_media (title, type, file_path, genre, year, poster_path, is_new)
-              VALUES (?, 'movie', ?, ?, ?, ?, 1)
-            `).run(title, filePath, genre, year, posterPath);
+              VALUES (?, ?, ?, ?, ?, ?, 1)
+            `).run(title, type, filePath, genre, year, posterPath);
             newItems++;
           } catch (e) { 
             console.error('Error inserting media:', e.message);

@@ -407,9 +407,17 @@ const playMedia = (media: any) => {
     notification.error('Error', 'Este elemento no tiene un archivo de video asociado.');
     return;
   }
-  desktop.playVideo(media.file_path, media.title);
+  // Enviar los segundos reales (media.progress en el objeto devuelto por fetchCatalog)
+  desktop.playVideo(media.file_path, media.title, media.id, media.progress || 0);
   selectedMedia.value = null;
 };
+
+// Refrescar catálogo al cerrar el reproductor para ver progreso actualizado
+watch(() => desktop.windows.player.isOpen, (isOpen) => {
+  if (!isOpen) {
+    fetchCatalog();
+  }
+});
 
 
 const seriesMedia = computed(() => [
@@ -450,20 +458,18 @@ const mediaSections = computed(() => [
   },
   {
     title: 'Top Valoradas',
-    items: [...allMedia.value].sort((a, b) => (b.stars || 0) - (a.stars || 0)).slice(0, 6)
+    items: [...allMedia.value].filter(m => m.type === 'movie').sort((a, b) => (b.stars || 0) - (a.stars || 0)).slice(0, 6)
   }
 ]);
 
-const musicTracks = ref([
-  { title: 'Nebulosa', artist: 'Astral Waves', color: 'linear-gradient(135deg, #667eea, #764ba2)' },
-  { title: 'Noctámbulo', artist: 'Midnight Pulse', color: 'linear-gradient(135deg, #f093fb, #f5576c)' },
-  { title: 'Aurora Boreal', artist: 'Arctic Echoes', color: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
-  { title: 'Pulso Oscuro', artist: 'Dark Matter', color: 'linear-gradient(135deg, #0c3483, #a2b6df)' },
-  { title: 'Cristal Roto', artist: 'Shattered Glass', color: 'linear-gradient(135deg, #fa709a, #fee140)' },
-  { title: 'Horizonte', artist: 'Solar Drift', color: 'linear-gradient(135deg, #a18cd1, #fbc2eb)' },
-  { title: 'Eco Silente', artist: 'Void Walker', color: 'linear-gradient(135deg, #30cfd0, #330867)' },
-  { title: 'Supernova', artist: 'Cosmic Dust', color: 'linear-gradient(135deg, #e8198b, #c7eafd)' },
-]);
+const musicTracks = computed(() => 
+  allMedia.value.filter(m => m.type === 'music').map(m => ({
+    ...m,
+    artist: m.genre || 'Artista Desconocido',
+    color: `linear-gradient(135deg, hsl(${Math.random() * 360}, 70%, 50%), hsl(${Math.random() * 360}, 70%, 40%))`
+  }))
+);
+
 };
 
 const removeLibrary = async (id: number) => {

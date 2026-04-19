@@ -52,6 +52,9 @@ export const useDesktopStore = defineStore('desktop', {
         entertainment: { id: 'entertainment', title: 'EntertainmentOS', isOpen: false, zIndex: 10, isMinimized: false, isMaximized: false, x: -1, y: -1, width: 1100, height: 700 },
       } as Record<WindowApp, WindowState>,
       currentVideo: '',
+      currentMediaId: null as number | null,
+      currentMediaTitle: '',
+      currentMediaSeconds: 0,
       desktopIcons: { ...defaultIcons, ...(savedIcons ? JSON.parse(savedIcons) : {}) } as Record<string, DesktopIcon>,
       dynamicIcons: {} as Record<string, DesktopIcon>,
       topZIndex: 100,
@@ -126,8 +129,11 @@ export const useDesktopStore = defineStore('desktop', {
       });
       this.dynamicIcons = newIcons;
     },
-    playVideo(url: string, title?: string) {
+    playVideo(url: string, title?: string, mediaId?: number, mediaSeconds?: number) {
       this.currentVideo = url;
+      this.currentMediaId = mediaId || null;
+      this.currentMediaTitle = title || '';
+      this.currentMediaSeconds = mediaSeconds || 0;
       if (title) this.windows.player.title = `Reproductor: ${title}`;
       this.openWindow('player');
     }
