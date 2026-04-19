@@ -144,10 +144,10 @@ const getAvailableApps = () => {
       id: 'deemix',
       name: 'Deemix',
       description: 'Descarga de música en alta calidad (FLAC/MP3). Gestiona y descarga tu biblioteca musical de forma sencilla.',
-      image: 'lscr.io/linuxserver/deemix:latest',
-      icon: `${CDN}/Deemix/icon.png`,
+      image: 'ghcr.io/bambanah/deemix:latest',
+      icon: `https://raw.githubusercontent.com/bambanah/deemix/master/webui/public/favicon.ico`,
       category: 'media',
-      developer: 'Deemix Community',
+      developer: 'Bambanah',
       ports: { '6595/tcp': 6595 },
       volumes: { 
         '/config': '/opt/nubeos/appdata/deemix/config', 
