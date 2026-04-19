@@ -140,6 +140,22 @@ const getAvailableApps = () => {
       },
       webPort: 4533
     },
+    {
+      id: 'deemix',
+      name: 'Deemix',
+      description: 'Descarga de música en alta calidad (FLAC/MP3). Gestiona y descarga tu biblioteca musical de forma sencilla.',
+      image: 'lscr.io/linuxserver/deemix:latest',
+      icon: `${CDN}/Deemix/icon.png`,
+      category: 'media',
+      developer: 'Deemix Community',
+      ports: { '6595/tcp': 6595 },
+      volumes: { 
+        '/config': '/opt/nubeos/appdata/deemix/config', 
+        '/downloads': DATA_DIR 
+      },
+      env: { PUID: '1000', PGID: '1000' },
+      webPort: 6595
+    },
 
     // ── Productividad ──
     {
