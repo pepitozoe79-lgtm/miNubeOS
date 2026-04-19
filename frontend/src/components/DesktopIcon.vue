@@ -122,6 +122,7 @@ onUnmounted(() => {
   user-select: none;
   z-index: 5;
   transition: transform 0.2s;
+  pointer-events: auto;
 }
 
 .desktop-icon.dragging {
