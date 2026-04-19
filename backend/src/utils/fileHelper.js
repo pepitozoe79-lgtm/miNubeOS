@@ -13,9 +13,12 @@ const getUserRoot = (username) => {
 };
 
 const getSafePath = (username, requestedPath = '') => {
+  // Normalize path for consistent slash handling
+  const normalizedRequested = requestedPath.replace(/\\/g, '/');
+
   // Handle Global Multimedia Library
-  if (requestedPath === 'Multimedia' || requestedPath.startsWith('Multimedia/')) {
-    const internalPath = requestedPath === 'Multimedia' ? '' : requestedPath.replace('Multimedia/', '');
+  if (normalizedRequested === 'Multimedia' || normalizedRequested.startsWith('Multimedia/')) {
+    const internalPath = normalizedRequested === 'Multimedia' ? '' : normalizedRequested.replace('Multimedia/', '');
     const fullPath = path.resolve(MULTIMEDIA_DIR, internalPath);
     
     // Security check: ensure the path is within the multimedia directory
