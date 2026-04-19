@@ -17,7 +17,7 @@ export interface DesktopIcon {
   id: string;
   label: string;
   icon: string;
-  color: 'blue' | 'purple' | 'green' | 'grey' | 'orange';
+  color: 'blue' | 'purple' | 'green' | 'grey' | 'orange' | 'dark';
   x: number;
   y: number;
   type?: 'app' | 'drive';
@@ -65,6 +65,13 @@ export const useDesktopStore = defineStore('desktop', {
         win.y = Math.max(0, (window.innerHeight - 600) / 2);
       }
       this.focusWindow(app);
+    },
+    toggleWindow(app: WindowApp) {
+      if (this.windows[app].isOpen) {
+        this.closeWindow(app);
+      } else {
+        this.openWindow(app);
+      }
     },
     closeWindow(app: WindowApp) {
       this.windows[app].isOpen = false;

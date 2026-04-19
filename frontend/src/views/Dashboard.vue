@@ -1,69 +1,333 @@
-#!/bin/bash
-# NubeOS Update Script - Asynchronous Version
+<template>
+  <div class="desktop-container">
+    <!-- Main Header / Top Bar -->
+    <header class="top-bar">
+      <div class="top-left">
+        <div class="logo-container">
+          <img src="/logo.png" alt="NubeOS" class="top-logo" @click="desktop.toggleWindow('apps')" />
+          <span class="os-name">NubeOS</span>
+        </div>
+        <div v-if="state.currentVersion" class="dashboard-loading">UI Version: {{ state.currentVersion }}</div>
+      </div>
 
-set -e
-# Detectar directorio raíz del proyecto dinámicamente
-INSTALL_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-LOG_FILE="$INSTALL_DIR/data/update.log"
-STATUS_FILE="$INSTALL_DIR/data/update_status.json"
+      <nav class="taskbar">
+        <div 
+          v-for="win in openWindows" 
+          :key="win.id"
+          class="taskbar-item"
+          :class="{ active: win.zIndex === desktop.topZIndex && !win.isMinimized }"
+          @click="handleTaskbarClick(win.id)"
+        >
+          <component :is="getIconComponent(win.id)" :size="16" />
+          <span>{{ win.title }}</span>
+        </div>
+      </nav>
 
-# Asegurar que el directorio de datos existe
-mkdir -p "$INSTALL_DIR/data"
+      <div class="top-right">
+        <div class="user-pill-container">
+          <div class="user-pill" @click="toggleUserMenu">
+            <span class="user-avatar"><User :size="16" /></span>
+            <span class="user-name">{{ auth.user?.username || 'Admin' }}</span>
+          </div>
+          
+          <Transition name="fade">
+            <div v-if="state.showUserMenu" class="user-dropdown">
+              <button class="dropdown-item" @click="desktop.openWindow('admin')">
+                <Settings :size="16" /> Configuración
+              </button>
+              <button class="dropdown-item" @click="handleReboot">
+                <RotateCcw :size="16" /> Reiniciar
+              </button>
+              <button class="dropdown-item" @click="handleShutdown">
+                <Power :size="16" /> Apagar
+              </button>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item logout" @click="handleLogout">
+                <LogOut :size="16" /> Cerrar Sesión
+              </button>
+            </div>
+          </Transition>
+        </div>
+        <div class="time">{{ new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }}</div>
+      </div>
+    </header>
 
-# Función para reportar estado
-set_status() {
-    local step=$1
-    local progress=$2
-    local message=$3
-    echo "{\"step\": \"$step\", \"progress\": $progress, \"message\": \"$message\", \"timestamp\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" > "$STATUS_FILE"
+    <main class="desktop-area">
+      <!-- Desktop Icons -->
+      <div class="icons-container">
+        <DesktopIcon 
+          v-for="icon in desktop.desktopIcons" 
+          :key="icon.id" 
+          :icon-data="icon" 
+        />
+        <DesktopIcon 
+          v-for="icon in desktop.dynamicIcons" 
+          :key="icon.id" 
+          :icon-data="icon" 
+        />
+      </div>
+
+      <!-- Windows Layer -->
+      <Window appId="files" title="Archivos"><Files /></Window>
+      <Window appId="apps" title="Aplicaciones"><Apps /></Window>
+      <Window appId="monitor" title="Monitor" @onReload="fetchStats"><Home /></Window>
+      <Window appId="admin" title="Configuración" v-if="auth.isAdmin"><ControlPanel /></Window>
+      <Window appId="terminal" title="Terminal" :noPadding="true"><TerminalView /></Window>
+      
+      <!-- System Status Widget -->
+      <Transition name="fade">
+        <aside class="syno-widget" v-if="state.showStatus">
+          <div v-if="state.dashboardError" class="error-message">{{ state.dashboardError }}</div>
+          
+          <div class="syno-section health">
+            <div class="section-title"><CheckCircle2 :size="14" /> SALUD DEL SISTEMA</div>
+            <div class="health-content">
+              <CheckCircle2 :size="40" color="#22c55e" />
+              <div class="status-box">
+                <div class="status-main">En buen estado</div>
+                <div class="status-sub">Su NubeOS funciona bien.</div>
+              </div>
+            </div>
+            <div class="syno-info-list" v-if="state.stats.ip">
+              <div class="info-row"><span class="label">Dispositivo</span> <span class="val">{{ state.stats.hostname || 'NubeOS' }}</span></div>
+              <div class="info-row"><span class="label">IP Local</span> <span class="val">{{ state.stats.ip }}</span></div>
+              <div class="info-row" v-if="state.stats.details?.uptime"><span class="label">Uptime</span> <span class="val">{{ formatUptime(state.stats.details.uptime) }}</span></div>
+            </div>
+          </div>
+
+          <div class="syno-section resources">
+            <div class="section-title"><Activity :size="14" /> MONITOR DE RECURSOS</div>
+            <div class="res-item">
+              <span class="label">CPU</span>
+              <div class="bar-bg"><div class="bar" :style="{ width: (state.stats.cpu || 0) + '%' }">{{ state.stats.cpu || 0 }}%</div></div>
+            </div>
+            <div class="res-item">
+              <span class="label">RAM</span>
+              <div class="bar-bg"><div class="bar blue" :style="{ width: (state.stats.ram || 0) + '%' }">{{ state.stats.ram || 0 }}%</div></div>
+            </div>
+          </div>
+
+          <div class="syno-section storage">
+            <div class="section-title"><Database :size="14" /> ALMACENAMIENTO</div>
+            <div class="storage-item">
+              <Database :size="24" color="#3b82f6" />
+              <div class="storage-info">
+                <div class="storage-label">Volumen 1</div>
+                <div class="bar-bg"><div class="bar cyan" :style="{ width: (state.stats.disk || 0) + '%' }"></div></div>
+                <div class="storage-data">{{ formatGB(state.stats.details?.diskUsed || 0) }} / {{ formatGB(state.stats.details?.diskTotal || 0) }}</div>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </Transition>
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { reactive, onMounted, onUnmounted, computed, provide } from 'vue';
+import { useAuthStore } from '../stores/auth';
+import { useDesktopStore, type WindowApp } from '../stores/desktop';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
+import { 
+  Folder, 
+  Activity, 
+  Settings, 
+  LogOut, 
+  RotateCcw, 
+  Power, 
+  CheckCircle2,
+  Database,
+  User,
+  LayoutDashboard,
+  Terminal,
+  Search
+} from 'lucide-vue-next';
+import Window from '../components/Window.vue';
+import DesktopIcon from '../components/DesktopIcon.vue';
+import Files from './Files.vue';
+import Apps from './Apps.vue';
+import Home from './Home.vue';
+import ControlPanel from './ControlPanel.vue';
+import TerminalView from './Terminal.vue';
+
+// State
+const state = reactive({
+  showUserMenu: false,
+  showStatus: true,
+  currentVersion: null as string | null,
+  dashboardError: null as string | null,
+  stats: { cpu: 0, ram: 0, disk: 0, hostname: '', ip: '', details: {} as any },
+  showPopup: false,
+});
+
+const auth = useAuthStore();
+const desktop = useDesktopStore();
+const router = useRouter();
+
+// Computed
+const openWindows = computed(() => {
+  return Object.values(desktop.windows).filter(w => w.isOpen);
+});
+
+// Methods
+const toggleUserMenu = () => { state.showUserMenu = !state.showUserMenu; };
+
+const handleTaskbarClick = (appId: WindowApp) => {
+  const win = desktop.windows[appId];
+  if (win.isMinimized) {
+    desktop.toggleMinimize(appId);
+  } else if (win.zIndex === desktop.topZIndex) {
+    desktop.toggleMinimize(appId);
+  } else {
+    desktop.focusWindow(appId);
+  }
+};
+
+const iconMap: Record<string, any> = {
+  files: Folder,
+  apps: LayoutDashboard,
+  monitor: Activity,
+  admin: Settings,
+  terminal: Terminal,
+};
+
+const getIconComponent = (appId: string) => {
+  return iconMap[appId] || Search;
+};
+
+const fetchStats = async () => {
+  try {
+    const res = await axios.get('/api/system/stats');
+    const data = res.data;
+    if (state.currentVersion && data.version !== state.currentVersion) {
+      window.location.reload();
+      return;
+    }
+    if (!state.currentVersion) state.currentVersion = data.version;
+    state.stats = data;
+    state.dashboardError = null;
+  } catch (err: any) {
+    console.error('Error fetching stats:', err);
+    state.dashboardError = 'Error conectando al sistema';
+  }
+};
+
+const handleLogout = () => { auth.logout(); router.push('/login'); };
+
+const handleReboot = async () => {
+  if (confirm('¿Reiniciar sistema?')) {
+    try { await axios.post('/api/system/reboot'); } catch (err) { alert('Error al intentar reiniciar'); }
+  }
+};
+
+const handleShutdown = async () => {
+  if (confirm('¿Apagar sistema?')) {
+    try { await axios.post('/api/system/shutdown'); } catch (err) { alert('Error al intentar apagar'); }
+  }
+};
+
+const formatUptime = (seconds: number) => {
+  if (!seconds) return '0 d 00:00:00';
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  return `${d}d ${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+};
+
+const formatGB = (bytes: number) => {
+  if (bytes === undefined || bytes === null) return '0 GB';
+  return (bytes / (1024 ** 3)).toFixed(1) + ' GB';
+};
+
+// Lifecycle
+let statsTimer: any;
+onMounted(() => {
+  auth.init();
+  fetchStats();
+  statsTimer = setInterval(fetchStats, 5000);
+});
+onUnmounted(() => { clearInterval(statsTimer); });
+</script>
+
+<style scoped>
+.desktop-container {
+  width: 100vw; height: 100vh;
+  display: flex; flex-direction: column;
+  overflow: hidden; position: relative;
+  background-color: #0f172a;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
-# Redirigir toda la salida al archivo de log
-exec > >(tee -a "$LOG_FILE") 2>&1
+.top-bar {
+  height: 48px; min-height: 48px;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 1rem; z-index: 2500; 
+  background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(15px);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+}
 
-echo "--- Iniciando actualización de NubeOS: $(date) ---"
-cd "$INSTALL_DIR"
+.top-left, .top-right { display: flex; align-items: center; gap: 1rem; }
+.logo-container { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+.top-logo { height: 24px; width: 24px; object-fit: contain; }
+.os-name { font-weight: 700; font-size: 1rem; color: white; }
 
-# 1. Sync with GitHub
-set_status "syncing" 10 "Sincronizando archivos con GitHub..."
-echo "[1/4] Sincronizando con GitHub (Forzando estado limpio)..."
-git fetch --all
-git reset --hard origin/main
-git clean -fd
-git pull origin main
+.taskbar { flex: 1; display: flex; justify-content: center; gap: 0.5rem; padding: 0 1rem; }
+.taskbar-item {
+  height: 34px; padding: 0 0.85rem;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  display: flex; align-items: center; gap: 0.6rem;
+  font-size: 0.85rem; border-radius: 8px; color: #94a3b8;
+  cursor: pointer; max-width: 160px; transition: all 0.2s;
+}
+.taskbar-item.active {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.3));
+  border-color: rgba(59, 130, 246, 0.4); color: white;
+}
 
-# 2. Update Backend dependencies
-set_status "backend" 30 "Actualizando dependencias del Backend..."
-echo "[2/4] Actualizando dependencias del Backend..."
-cd $INSTALL_DIR/backend
-npm install --omit=dev
+.user-pill-container { position: relative; }
+.user-pill {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.35rem 0.8rem; border-radius: 20px;
+  background: rgba(255,255,255,0.08); cursor: pointer; color: white;
+}
+.user-avatar { background: #3b82f6; border-radius: 50%; padding: 4px; display: flex;}
+.user-dropdown {
+  position: absolute; top: calc(100% + 12px); right: 0; width: 220px;
+  background: #1e293b; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.6); padding: 0.75rem;
+}
+.dropdown-item {
+  width: 100%; padding: 0.75rem 1rem;
+  color: #e2e8f0; font-size: 0.9rem; border-radius: 10px;
+  display: flex; align-items: center; gap: 0.75rem;
+  background: transparent; border: none; cursor: pointer;
+}
+.dropdown-item:hover { background: rgba(59, 130, 246, 0.1); }
+.dropdown-divider { height: 1px; background: rgba(255,255,255,0.05); margin: 0.5rem 0; }
 
-# 3. Update Frontend dependencies and rebuild
-set_status "frontend_deps" 50 "Limpiando y preparando Frontend..."
-echo "[3/4] Actualizando dependencias del Frontend..."
-cd $INSTALL_DIR/frontend
+.desktop-area { flex: 1; position: relative; }
+.icons-container {
+  position: absolute; inset: 0; padding: 1.5rem;
+  display: grid; grid-template-rows: repeat(auto-fill, 100px);
+  grid-auto-flow: column; gap: 1rem; pointer-events: none; z-index: 20;
+}
 
-# Limpiamos dist y caché para asegurar una construcción limpia
-rm -rf dist
-rm -rf node_modules/.vite
+.syno-widget {
+  position: absolute; top: 1.5rem; right: 1.5rem; width: 280px;
+  background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(20px);
+  border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7); z-index: 100; color: white;
+}
+.syno-section { padding: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.section-title { font-size: 0.7rem; font-weight: 800; color: #64748b; letter-spacing: 0.1em; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.6rem; }
+.status-main { font-weight: 700; color: #10b981; font-size: 1.15rem; }
+.bar-bg { height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+.bar { height: 100%; background: #3b82f6; transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
 
-npm install --include=dev
-
-set_status "build" 70 "Construyendo nueva versión (limpieza profunda)..."
-echo "Ejecutando npm run build..."
-npm run build
-
-if [ ! -d "dist" ] || [ ! -f "dist/index.html" ]; then
-    set_status "error" 0 "Error: La construcción falló o no generó index.html"
-    echo "ERROR: No se pudo generar la carpeta dist o el index.html."
-    exit 1
-fi
-
-# 4. Finalize and Restart
-set_status "restarting" 90 "¡Todo listo! Reiniciando servicios..."
-echo "[4/4] Actualización completada con éxito. Programando reinicio..."
-
-# Reiniciamos el servicio un par de segundos después para permitir que el script finalice limpiamente
-(sleep 5; set_status "idle" 100 "Sistema actualizado correctamente."; systemctl restart nubeos) &
-
-echo "Actualización finalizada correctamente a las $(date). El sistema volverá en breve."
+.time { font-size: 0.9rem; font-weight: 600; color: white; margin-left: 1rem; }
+.fade-enter-active, .fade-leave-active { transition: all 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(-10px); }
+</style>

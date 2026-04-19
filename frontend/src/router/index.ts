@@ -48,6 +48,7 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
+  auth.init();
   
   // Check if system is configured
   const isConfigured = await auth.checkSetup();
