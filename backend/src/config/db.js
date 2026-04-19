@@ -13,8 +13,8 @@ if (envDbPath && path.isAbsolute(envDbPath)) {
   // Production: absolute path like /opt/nubeos/data/db/nubeos.sqlite
   dbPath = envDbPath;
 } else {
-  // Development: relative path from backend folder
-  dbPath = path.resolve(__dirname, '../../', envDbPath || 'data/db/nubeos.sqlite');
+  // Development: relative path from backend folder. Now pointing to NubeOs/data (sibling)
+  dbPath = path.resolve(__dirname, '../../../', envDbPath || 'data/db/nubeos.sqlite');
 }
 
 // Ensure the database directory exists
@@ -80,15 +80,28 @@ db.exec(`
   );
 `);
 
+// Migration: Fix incorrect /backend/data paths in existing databases
+try {
+  const result = db.prepare("UPDATE eo_libraries SET path = REPLACE(path, '/backend/data/', '/data/') WHERE path LIKE '%/backend/data/%'").run();
+  if (result.changes > 0) {
+    console.log(`🧹 Migración completada: ${result.changes} rutas de librería corregidas.`);
+  }
+
+  const mediaResult = db.prepare("UPDATE eo_media SET file_path = REPLACE(file_path, '/backend/data/', '/data/') WHERE file_path LIKE '%/backend/data/%'").run();
+  if (mediaResult.changes > 0) {
+    console.log(`🧹 Migración completada: ${mediaResult.changes} rutas de medios corregidas.`);
+  }
+} catch (e) {
+  console.warn('⚠️ Fallo en migración de rutas:', e.message);
+}
+
 // Migration: Ensure 'type' column exists in eo_libraries
 try {
   db.exec("ALTER TABLE eo_libraries ADD COLUMN type TEXT DEFAULT 'movie'");
-} catch (e) {
-  // Column already exists, ignore
-}
+} catch (e) {}
 
 // --- Multimedia Structure Initialization ---
-const multimediaBase = path.resolve(__dirname, '../../data/multimedia');
+const multimediaBase = path.resolve(__dirname, '../../../data/multimedia');
 const defaultLibs = [
   { name: 'Películas', folder: 'Peliculas', type: 'movie' },
   { name: 'Series', folder: 'Series', type: 'series' },

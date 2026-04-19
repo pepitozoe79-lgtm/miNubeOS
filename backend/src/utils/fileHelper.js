@@ -1,8 +1,8 @@
 const path = require('path');
 const fs = require('fs');
 
-const DATA_DIR = path.resolve(__dirname, '../../../data/users');
-const MULTIMEDIA_DIR = path.resolve(__dirname, '../../../data/multimedia');
+const DATA_DIR = path.resolve(__dirname, '../../../../data/users');
+const MULTIMEDIA_DIR = path.resolve(__dirname, '../../../../data/multimedia');
 
 const getUserRoot = (username) => {
   const userPath = path.join(DATA_DIR, username);
