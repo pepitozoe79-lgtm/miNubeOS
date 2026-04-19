@@ -50,4 +50,4 @@ const getSafePath = (username, requestedPath = '') => {
   return fullPath;
 };
 
-module.exports = { getUserRoot, getSafePath, DATA_DIR };
+module.exports = { getUserRoot, getSafePath, DATA_DIR, MULTIMEDIA_DIR };
