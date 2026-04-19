@@ -1,4 +1,3 @@
-const axios = require('axios');
 const db = require('../config/db');
 
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -16,22 +15,25 @@ const searchMedia = async (title, year, type = 'movie') => {
 
   try {
     const endpoint = type === 'series' ? '/search/tv' : '/search/movie';
-    const response = await axios.get(`${BASE_URL}${endpoint}`, {
-      params: {
-        api_key: apiKey,
-        query: title,
-        year: year,
-        language: 'es-ES'
-      }
+    const params = new URLSearchParams({
+      api_key: apiKey,
+      query: title,
+      year: (year || '').toString(),
+      language: 'es-ES'
     });
 
-    if (response.data.results && response.data.results.length > 0) {
-      const result = response.data.results[0];
+    const response = await fetch(`${BASE_URL}${endpoint}?${params.toString()}`);
+    if (!response.ok) return null;
+    
+    const data = await response.json();
+
+    if (data.results && data.results.length > 0) {
+      const result = data.results[0];
       return {
         tmdbId: result.id,
         title: result.title || result.name,
         description: result.overview,
-        rating: result.vote_average.toFixed(1),
+        rating: (result.vote_average || 0).toFixed(1),
         year: (result.release_date || result.first_air_date || '').split('-')[0],
         posterPath: result.poster_path ? `${IMAGE_BASE_URL}${result.poster_path}` : null,
         bannerPath: result.backdrop_path ? `${BACKDROP_BASE_URL}${result.backdrop_path}` : null
