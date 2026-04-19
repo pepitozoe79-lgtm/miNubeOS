@@ -126,12 +126,6 @@ const onResizeEnd = () => {
   document.removeEventListener('mouseup', onResizeEnd);
 };
 
-const onResizeEnd = () => {
-  isResizing.value = null;
-  document.removeEventListener('mousemove', onResizeMove);
-  document.removeEventListener('mouseup', onResizeEnd);
-};
-
 onUnmounted(() => {
   document.removeEventListener('mousemove', onDragMove);
   document.removeEventListener('mouseup', onDragEnd);
