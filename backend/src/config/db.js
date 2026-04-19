@@ -75,16 +75,24 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
+    type TEXT DEFAULT 'movie',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
 `);
 
+// Migration: Ensure 'type' column exists in eo_libraries
+try {
+  db.exec("ALTER TABLE eo_libraries ADD COLUMN type TEXT DEFAULT 'movie'");
+} catch (e) {
+  // Column already exists, ignore
+}
+
 // --- Multimedia Structure Initialization ---
 const multimediaBase = path.resolve(__dirname, '../../data/multimedia');
 const defaultLibs = [
-  { name: 'Películas', folder: 'Peliculas' },
-  { name: 'Series', folder: 'Series' },
-  { name: 'Música', folder: 'Musica' }
+  { name: 'Películas', folder: 'Peliculas', type: 'movie' },
+  { name: 'Series', folder: 'Series', type: 'series' },
+  { name: 'Música', folder: 'Musica', type: 'music' }
 ];
 
 try {
@@ -100,8 +108,8 @@ try {
     // 2. Register in DB if missing
     const exists = db.prepare('SELECT id FROM eo_libraries WHERE path = ?').get(fullPath);
     if (!exists) {
-      db.prepare('INSERT INTO eo_libraries (path, name) VALUES (?, ?)').run(fullPath, lib.name);
-      console.log(`✅ Librería por defecto mapeada en DB: ${lib.name}`);
+      db.prepare('INSERT INTO eo_libraries (path, name, type) VALUES (?, ?, ?)').run(fullPath, lib.name, lib.type);
+      console.log(`✅ Librería por defecto mapeada en DB: ${lib.name} (${lib.type})`);
     }
   });
 } catch (err) {

@@ -111,8 +111,8 @@ router.post('/progress', authMiddleware, (req, res) => {
 router.post('/admin/libraries', authMiddleware, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
   try {
-    const { path: libPath, name } = req.body;
-    db.prepare('INSERT INTO eo_libraries (path, name) VALUES (?, ?)').run(libPath, name);
+    const { path: libPath, name, type } = req.body;
+    db.prepare('INSERT INTO eo_libraries (path, name, type) VALUES (?, ?, ?)').run(libPath, name, type || 'movie');
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -180,8 +180,15 @@ router.post('/admin/scan', authMiddleware, (req, res) => {
         if (isVideo || isAudio) {
           const fileNameNoExt = path.parse(file).name;
           const seriesMatch = fileNameNoExt.match(/S(\d+)E(\d+)|[S\s](\d+)E(\d+)|\s(\d+)x(\d+)/i);
-          const isSeries = !!seriesMatch;
-          const type = isVideo ? (isSeries ? 'series' : 'movie') : 'music';
+          const isSeriesRegex = !!seriesMatch;
+          
+          // Use library type as primary source, or regex if generic
+          let type = lib.type;
+          if (lib.type === 'generic') {
+             type = isVideo ? (isSeriesRegex ? 'series' : 'movie') : 'music';
+          }
+          
+          const isSeries = type === 'series' || (type === 'generic' && isSeriesRegex);
 
           let season = null;
           let episode = null;

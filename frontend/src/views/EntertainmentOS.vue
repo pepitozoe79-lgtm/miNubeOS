@@ -281,6 +281,11 @@
                         <Folder :size="18" />
                       </button>
                     </div>
+                    <select v-model="selectedLibType" class="lib-type-select">
+                      <option value="movie">Películas</option>
+                      <option value="series">Series</option>
+                      <option value="music">Música</option>
+                    </select>
                     <button @click="addLibrary" class="eos-btn-primary">
                       <Plus :size="18" /> <span>Añadir</span>
                     </button>
@@ -304,7 +309,10 @@
                         <component :is="getLibIcon(lib.name)" :size="32" />
                       </div>
                       <div class="lib-card-body">
-                        <h4>{{ lib.name }}</h4>
+                        <div class="lib-card-header">
+                          <h4>{{ lib.name }}</h4>
+                          <span class="lib-type-tag">{{ lib.type === 'movie' ? 'Película' : lib.type === 'series' ? 'Serie' : 'Música' }}</span>
+                        </div>
                         <code title="Ruta absoluta">{{ lib.path }}</code>
                       </div>
                       <div class="lib-card-actions">
@@ -428,6 +436,7 @@ const scanning = ref(false);
 const searchQuery = ref('');
 const adminSearch = ref('');
 const newLibPath = ref('');
+const selectedLibType = ref('movie');
 const selectedMedia = ref<any>(null);
 
 // Folder Browser State
@@ -556,7 +565,12 @@ const scanLibraries = async () => {
 const addLibrary = async () => {
   if (!newLibPath.value) return;
   try {
-    await axios.post('/api/entertainment/admin/libraries', { path: newLibPath.value, name: 'Nueva' });
+    const name = selectedLibType.value === 'movie' ? 'Películas' : selectedLibType.value === 'series' ? 'Series' : 'Música';
+    await axios.post('/api/entertainment/admin/libraries', { 
+      path: newLibPath.value, 
+      name: name,
+      type: selectedLibType.value 
+    });
     newLibPath.value = '';
     fetchAdminData();
   } catch (err) { notification.error('Error', 'No se pudo añadir'); }
@@ -722,6 +736,7 @@ th, td { padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,
 .banner-content p { color: #94a3b8; font-size: 0.9rem; }
 .lib-add-form-premium { display: flex; gap: 1rem; align-items: center; max-width: 600px; }
 .lib-add-form-premium .input-group { flex: 1; display: flex; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
+.lib-type-select { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 0.75rem; color: white; cursor: pointer; outline: none; }
 .lib-add-form-premium input { flex: 1; background: transparent; border: none; padding: 0.75rem 1rem; color: white; font-size: 0.9rem; }
 .browse-btn { background: rgba(255,255,255,0.05); border: none; border-left: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 0 1rem; cursor: pointer; transition: all 0.2s; }
 .browse-btn:hover { color: white; background: rgba(255,255,255,0.1); }
@@ -739,6 +754,8 @@ th, td { padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,
 .lib-card-icon { width: 56px; height: 56px; border-radius: 10px; background: rgba(99, 102, 241, 0.1); color: #818cf8; display: flex; align-items: center; justify-content: center; }
 .lib-card-body { flex: 1; overflow: hidden; }
 .lib-card-body h4 { color: white; margin-bottom: 0.25rem; font-size: 1rem; }
+.lib-card-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.25rem; }
+.lib-type-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: rgba(99, 102, 241, 0.2); color: #a5b4fc; text-transform: uppercase; font-weight: 700; }
 .lib-card-body code { color: #64748b; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .lib-card-actions { opacity: 0; transition: opacity 0.2s; }
 .lib-card:hover .lib-card-actions { opacity: 1; }
