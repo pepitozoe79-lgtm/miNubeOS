@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { Folder, LayoutDashboard, Activity, Settings, HardDrive, Terminal } from 'lucide-vue-next';
 import { useDesktopStore, type DesktopIcon } from '../stores/desktop';
 import { useFileStore } from '../stores/files';
@@ -29,6 +29,14 @@ let dragStartX = 0;
 let dragStartY = 0;
 let initialIconX = 0;
 let initialIconY = 0;
+
+// Sincronizar coords locales con props (evita el salto al empezar a arrastrar)
+watch(() => [props.iconData.x, props.iconData.y], ([newX, newY]) => {
+  if (!isDragging.value) {
+    currentX.value = newX as number;
+    currentY.value = newY as number;
+  }
+});
 
 const onMouseDown = (e: MouseEvent) => {
   if (e.button !== 0) return; // Only left click
