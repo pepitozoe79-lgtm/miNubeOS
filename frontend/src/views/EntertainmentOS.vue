@@ -346,6 +346,33 @@ const navItems = [
   { id: 'music', label: 'Música', icon: Music },
 ];
 
+// --- Search & Filter ---
+const searchQuery = ref('');
+const genres = ['Todas', 'Sci-Fi', 'Thriller', 'Acción', 'Terror', 'Fantasía', 'Western', 'Psicológico'];
+const activeGenre = ref('Todas');
+
+// --- Media Data & Loading ---
+const allMedia = ref<any[]>([]);
+const loading = ref(false);
+
+const filteredMedia = computed(() => {
+  let result = allMedia.value;
+  
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase();
+    result = result.filter(m => 
+      m.title.toLowerCase().includes(q) || 
+      (m.series_name && m.series_name.toLowerCase().includes(q))
+    );
+  }
+  
+  if (activeGenre.value !== 'Todas') {
+    result = result.filter(m => m.genre === activeGenre.value);
+  }
+  
+  return result;
+});
+
 // --- Hero Carousel ---
 const heroIndex = ref(0);
 const heroProgress = ref(0);
@@ -410,10 +437,7 @@ const prevHero = () => {
   startHeroAutoplay();
 };
 
-// --- Media Data ---
-const allMedia = ref<any[]>([]);
-const loading = ref(false);
-
+// --- API Calls ---
 const fetchCatalog = async () => {
   loading.value = true;
   try {
@@ -424,7 +448,7 @@ const fetchCatalog = async () => {
       isNew: m.is_new === 1,
       poster: m.poster_path ? `/api/entertainment/poster/${m.id}` : '/entertainment/posters/stellar_horizon.png',
       banner: m.banner_path || '/entertainment/posters/hero_banner.png',
-      progress: m.progress ? (m.progress / 7200) * 100 : 0
+      progress: m.progress || 0 // Progress in seconds
     }));
   } catch (err) {
     console.error('Error fetching catalog:', err);
@@ -457,53 +481,6 @@ const addLibrary = async () => {
   }
 };
 
-const playMedia = (media: any) => {
-  if (!media.file_path) {
-    notification.error('Error', 'Este elemento no tiene un archivo de video asociado.');
-    return;
-  }
-  // Enviar los segundos reales (media.progress en el objeto devuelto por fetchCatalog)
-  desktop.playVideo(media.file_path, media.title, media.id, media.progress || 0);
-  selectedMedia.value = null;
-};
-
-// Refrescar catálogo al cerrar el reproductor para ver progreso actualizado
-watch(() => desktop.windows.player.isOpen, (isOpen) => {
-  if (!isOpen) {
-    fetchCatalog();
-  }
-});
-
-
-const seriesMedia = computed(() => {
-  const series = filteredMedia.value.filter(m => m.type === 'series');
-  const uniqueSeries: any[] = [];
-  const seenNames = new Set();
-
-  series.forEach(item => {
-    if (!seenNames.has(item.series_name)) {
-      seenNames.add(item.series_name);
-      uniqueSeries.push({
-        ...item,
-        title: item.series_name,
-        isSeriesGroup: true
-      });
-    }
-  });
-
-  return uniqueSeries;
-});
-
-const getEpisodes = (seriesName: string) => {
-  return allMedia.value
-    .filter(m => m.series_name === seriesName)
-    .sort((a, b) => {
-      if (a.season !== b.season) return a.season - b.season;
-      return a.episode - b.episode;
-    });
-};
-
-
 const scanning = ref(false);
 const scanLibraries = async () => {
   scanning.value = true;
@@ -516,6 +493,60 @@ const scanLibraries = async () => {
   } finally {
     scanning.value = false;
   }
+};
+
+const removeLibrary = async (id: number) => {
+  if (!confirm('¿Seguro que deseas eliminar esta librería? No se borrarán los archivos, solo el acceso.')) return;
+  try {
+    await axios.delete(`/api/entertainment/admin/libraries/${id}`);
+    fetchLibraries();
+    notification.success('Eliminado', 'Librería eliminada');
+  } catch (err) {
+    notification.error('Error', 'No se pudo eliminar la librería');
+  }
+};
+
+// --- Player Logic ---
+const playMedia = (media: any) => {
+  if (!media.file_path) {
+    notification.error('Error', 'Este elemento no tiene un archivo de video asociado.');
+    return;
+  }
+  desktop.playVideo(media.file_path, media.title, media.id, media.progress || 0);
+  selectedMedia.value = null;
+};
+
+watch(() => desktop.windows.player.isOpen, (isOpen) => {
+  if (!isOpen) {
+    fetchCatalog();
+  }
+});
+
+// --- Computed Sections ---
+const seriesMedia = computed(() => {
+  const series = filteredMedia.value.filter(m => m.type === 'series');
+  const uniqueSeries: any[] = [];
+  const seenNames = new Set();
+  series.forEach(item => {
+    if (!seenNames.has(item.series_name)) {
+      seenNames.add(item.series_name);
+      uniqueSeries.push({
+        ...item,
+        title: item.series_name,
+        isSeriesGroup: true
+      });
+    }
+  });
+  return uniqueSeries;
+});
+
+const getEpisodes = (seriesName: string) => {
+  return allMedia.value
+    .filter(m => m.series_name === seriesName)
+    .sort((a, b) => {
+      if (a.season !== b.season) return a.season - b.season;
+      return a.episode - b.episode;
+    });
 };
 
 const mediaSections = computed(() => [
@@ -545,44 +576,7 @@ const musicTracks = computed(() =>
   }))
 );
 
-};
-
-const removeLibrary = async (id: number) => {
-  if (!confirm('¿Seguro que deseas eliminar esta librería? No se borrarán los archivos, solo el acceso.')) return;
-  try {
-    await axios.delete(`/api/entertainment/admin/libraries/${id}`);
-    fetchLibraries();
-    notification.success('Eliminado', 'Librería eliminada');
-  } catch (err) {
-    notification.error('Error', 'No se pudo eliminar la librería');
-  }
-};
-
-
-// --- Search & Filter ---
-const searchQuery = ref('');
-const genres = ['Todas', 'Sci-Fi', 'Thriller', 'Acción', 'Terror', 'Fantasía', 'Western', 'Psicológico'];
-const activeGenre = ref('Todas');
-
-const filteredMedia = computed(() => {
-  let result = allMedia.value;
-  
-  if (searchQuery.value) {
-    const q = searchQuery.value.toLowerCase();
-    result = result.filter(m => 
-      m.title.toLowerCase().includes(q) || 
-      (m.series_name && m.series_name.toLowerCase().includes(q))
-    );
-  }
-  
-  if (activeGenre.value !== 'Todas') {
-    result = result.filter(m => m.genre === activeGenre.value);
-  }
-  
-  return result;
-});
-
-// --- Modal ---
+// --- UI State ---
 const selectedMedia = ref<any>(null);
 const showSettings = ref(false);
 const contentRef = ref<HTMLElement | null>(null);
@@ -590,6 +584,18 @@ const contentRef = ref<HTMLElement | null>(null);
 const openMediaDetail = (media: any) => {
   selectedMedia.value = media;
 };
+
+// --- Lifecycle ---
+onMounted(() => {
+  startHeroAutoplay();
+  fetchCatalog();
+  fetchLibraries();
+});
+
+onUnmounted(() => {
+  clearInterval(heroTimer);
+  clearInterval(progressTimer);
+});
 
 // --- Lifecycle ---
 onMounted(() => {
