@@ -336,13 +336,19 @@ const fetchDrives = async () => {
       const id = drive.id ? `drive-${drive.id}` : `drive-${index}`;
       const existing = desktop.dynamicIcons[id];
 
+      // Deberían respetar la misma cuadrilla que desktopIcons
+      const gridX = 110;
+      const gridY = 120;
+      const defaultX = Math.floor((screenWidth - 120) / gridX) * gridX + 20;
+      const defaultY = (index * gridY) + 20;
+
       return {
         id,
         label: drive.label || `Unidad (${drive.path})`,
         icon: 'HardDrive',
         color: 'orange',
-        x: existing ? existing.x : screenWidth - 110,
-        y: existing ? existing.y : 20 + (index * 110),
+        x: existing ? existing.x : defaultX,
+        y: existing ? existing.y : defaultY,
         type: 'drive',
         path: drive.path
       };
