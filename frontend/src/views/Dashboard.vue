@@ -98,12 +98,18 @@
           <div class="syno-section resources">
             <div class="section-title"><Activity :size="14" /> MONITOR DE RECURSOS</div>
             <div class="res-item">
-              <span class="label">CPU</span>
-              <div class="bar-bg"><div class="bar" :style="{ width: (state.stats.cpu || 0) + '%' }">{{ state.stats.cpu || 0 }}%</div></div>
+              <div class="res-info">
+                <span class="label">CPU</span>
+                <span class="value">{{ state.stats.cpu || 0 }}%</span>
+              </div>
+              <div class="bar-bg"><div class="bar" :style="{ width: (state.stats.cpu || 0) + '%' }"></div></div>
             </div>
             <div class="res-item">
-              <span class="label">RAM</span>
-              <div class="bar-bg"><div class="bar blue" :style="{ width: (state.stats.ram || 0) + '%' }">{{ state.stats.ram || 0 }}%</div></div>
+              <div class="res-info">
+                <span class="label">RAM</span>
+                <span class="value">{{ state.stats.ram || 0 }}%</span>
+              </div>
+              <div class="bar-bg"><div class="bar blue" :style="{ width: (state.stats.ram || 0) + '%' }"></div></div>
             </div>
           </div>
 
@@ -326,8 +332,20 @@ onUnmounted(() => { clearInterval(statsTimer); });
 .syno-section { padding: 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.05); }
 .section-title { font-size: 0.7rem; font-weight: 800; color: #64748b; letter-spacing: 0.1em; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.6rem; }
 .status-main { font-weight: 700; color: #10b981; font-size: 1.15rem; }
-.bar-bg { height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+.bar-bg { height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
 .bar { height: 100%; background: #3b82f6; transition: width 0.8s cubic-bezier(0.16, 1, 0.3, 1); }
+.bar.blue { background: #3b82f6; }
+.bar.cyan { background: #06b6d4; }
+
+.res-item { margin-bottom: 1rem; }
+.res-info { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.8rem; }
+.res-info .label { color: #94a3b8; font-weight: 500; }
+.res-info .value { color: white; font-weight: 600; }
+
+.syno-info-list { margin-top: 1rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.info-row { display: flex; justify-content: space-between; font-size: 0.75rem; }
+.info-row .label { color: #64748b; }
+.info-row .val { color: #e2e8f0; font-weight: 500; }
 
 .time { font-size: 0.9rem; font-weight: 600; color: white; margin-left: 1rem; }
 .fade-enter-active, .fade-leave-active { transition: all 0.2s ease; }
