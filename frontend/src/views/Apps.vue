@@ -35,6 +35,7 @@ const searchQuery = ref('');
 const activeCategory = ref('all');
 const installingApp = ref<string | null>(null);
 const installProgress = ref(0);
+const installStatusLabel = ref('');
 
 const categories = [
   { id: 'all', name: 'Todos', icon: Layers },
@@ -122,24 +123,33 @@ const installApp = async (id: string) => {
   if (installingApp.value) return;
   installingApp.value = id;
   installProgress.value = 0;
+  installStatusLabel.value = 'Descargando...';
   
   // Simulate progress
   const interval = setInterval(() => {
-    installProgress.value = Math.min(installProgress.value + Math.random() * 15, 90);
-  }, 500);
+    if (installProgress.value < 80) {
+      installProgress.value += Math.random() * 12;
+    } else if (installProgress.value < 99) {
+      installStatusLabel.value = 'Instalando...';
+      installProgress.value = Math.min(installProgress.value + 0.8, 99);
+    }
+  }, 800);
 
   try {
     await axios.post(`/api/apps/install/${id}`);
     installProgress.value = 100;
+    installStatusLabel.value = '¡Listo!';
     setTimeout(() => {
       fetchData();
       installingApp.value = null;
       installProgress.value = 0;
-    }, 600);
+      installStatusLabel.value = '';
+    }, 1000);
   } catch (err: any) {
     alert(err.response?.data?.error || 'Error al instalar app');
     installingApp.value = null;
     installProgress.value = 0;
+    installStatusLabel.value = '';
   } finally {
     clearInterval(interval);
   }
@@ -281,6 +291,7 @@ const openAppUrl = (app: StoreApp) => {
               >
                 <div class="install-progress">
                   <div class="install-bar" :style="{ width: installProgress + '%' }"></div>
+                  <div class="install-label">{{ installStatusLabel }}</div>
                 </div>
                 <span>{{ Math.round(installProgress) }}%</span>
               </button>
@@ -645,16 +656,30 @@ const openAppUrl = (app: StoreApp) => {
 
 .install-progress {
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 100%;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .install-bar {
-  height: 100%;
-  background: rgba(99, 102, 241, 0.15);
-  transition: width 0.3s ease;
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(59, 130, 246, 0.4);
+  transition: width 0.4s ease;
+}
+
+.install-label {
+  position: relative;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
 .tile-btn.installing span {
