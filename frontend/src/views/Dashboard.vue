@@ -52,7 +52,7 @@
       </div>
     </header>
 
-    <main class="desktop-area">
+    <main class="desktop-area" @contextmenu.prevent="handleContextMenu">
       <!-- Desktop Icons -->
       <div class="icons-container">
         <DesktopIcon 
@@ -128,6 +128,34 @@
       </Transition>
 
       <NotificationCenter />
+
+      <!-- Desktop Context Menu -->
+      <Transition name="fade">
+        <div 
+          v-if="state.desktopMenu.show" 
+          class="desktop-context-menu glass"
+          :style="{ left: state.desktopMenu.x + 'px', top: state.desktopMenu.y + 'px' }"
+          @click.stop
+        >
+          <div class="menu-item" @click="handleRefresh">
+            <RefreshCw :size="14" /> Actualizar
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item" @click="desktop.openWindow('terminal')">
+            <Terminal :size="14" /> Abrir Terminal
+          </div>
+          <div class="menu-item" @click="desktop.openWindow('files')">
+            <Folder :size="14" /> Abrir Archivos
+          </div>
+          <div class="menu-divider"></div>
+          <div class="menu-item" @click="desktop.openWindow('monitor')">
+            <Monitor :size="14" /> Monitor de Sistema
+          </div>
+          <div class="menu-item" @click="desktop.openWindow('admin')">
+            <Settings :size="14" /> Personalizar
+          </div>
+        </div>
+      </Transition>
     </main>
   </div>
 </template>
@@ -150,7 +178,10 @@ import {
   User,
   LayoutDashboard,
   Terminal,
-  Search
+  Search,
+  Monitor,
+  RefreshCw,
+  Image as ImageIcon
 } from 'lucide-vue-next';
 import Window from '../components/Window.vue';
 import DesktopIcon from '../components/DesktopIcon.vue';
@@ -170,6 +201,7 @@ const state = reactive({
   dashboardError: null as string | null,
   stats: { cpu: 0, ram: 0, disk: 0, hostname: '', ip: '', details: {} as any },
   showPopup: false,
+  desktopMenu: { show: false, x: 0, y: 0 }
 });
 
 const auth = useAuthStore();
@@ -183,7 +215,29 @@ const openWindows = computed(() => {
 });
 
 // Methods
-const toggleUserMenu = () => { state.showUserMenu = !state.showUserMenu; };
+const toggleUserMenu = () => { 
+  state.desktopMenu.show = false;
+  state.showUserMenu = !state.showUserMenu; 
+};
+
+const handleContextMenu = (e: MouseEvent) => {
+  state.showUserMenu = false;
+  state.desktopMenu.show = true;
+  state.desktopMenu.x = e.clientX;
+  state.desktopMenu.y = e.clientY;
+};
+
+const closeMenus = () => {
+  state.showUserMenu = false;
+  state.desktopMenu.show = false;
+};
+
+const handleRefresh = () => {
+  closeMenus();
+  notification.success('Actualizando', 'Sincronizando el escritorio...');
+  fetchStats();
+  fetchDrives();
+};
 
 const handleTaskbarClick = (appId: WindowApp) => {
   const win = desktop.windows[appId];
@@ -296,10 +350,12 @@ onMounted(() => {
   fetchDrives();
   statsTimer = setInterval(fetchStats, 5000);
   drivesTimer = setInterval(fetchDrives, 10000);
+  window.addEventListener('click', closeMenus);
 });
 onUnmounted(() => { 
   clearInterval(statsTimer); 
   clearInterval(drivesTimer);
+  window.removeEventListener('click', closeMenus);
 });
 </script>
 
@@ -394,6 +450,42 @@ onUnmounted(() => {
 .info-row .val { color: #e2e8f0; font-weight: 500; }
 
 .time { font-size: 0.9rem; font-weight: 600; color: white; margin-left: 1rem; }
+
+.desktop-context-menu {
+  position: fixed;
+  width: 180px;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  z-index: 5000;
+}
+
+.menu-item {
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.menu-item:hover {
+  background: rgba(59, 130, 246, 0.2);
+  color: white;
+}
+
+.menu-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  margin: 4px 0;
+}
+
 .fade-enter-active, .fade-leave-active { transition: all 0.2s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(-10px); }
 </style>
