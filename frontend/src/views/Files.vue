@@ -539,6 +539,34 @@ const currentItemMetadata = computed(() => {
       </div>
     </aside>
 
+    <!-- Upload Progress Overlay -->
+    <Transition name="fade-slide">
+      <div v-if="fileStore.uploading" class="upload-manager glass">
+        <header class="upload-manager-header">
+          <div class="title">
+            <Upload :size="14" />
+            <span>Subiendo {{ fileStore.uploadingFiles.length }} elementos</span>
+          </div>
+          <button class="close-btn" @click="fileStore.uploading = false"><X :size="14" /></button>
+        </header>
+        <div class="upload-manager-list scrollbar-thin">
+          <div v-for="file in fileStore.uploadingFiles" :key="file.name" class="upload-manager-item">
+            <div class="file-info">
+              <span class="name">{{ file.name }}</span>
+              <span class="percent">{{ file.progress }}%</span>
+            </div>
+            <div class="progress-track">
+              <div 
+                class="progress-fill" 
+                :class="{ completed: file.progress === 100 }"
+                :style="{ width: file.progress + '%' }"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
     <!-- Upload Input Hidden -->
     <input id="file-upload-main" type="file" multiple style="display: none" @change="handleFileUpload" />
 
@@ -932,4 +960,112 @@ const currentItemMetadata = computed(() => {
 
 .glass-container { backdrop-filter: blur(20px); }
 .spacer { flex: 1; }
+.details-header div:hover { background: rgba(255, 255, 255, 0.05); }
+
+/* --- Upload Manager --- */
+.upload-manager {
+  position: absolute;
+  bottom: 2.5rem;
+  right: 1.5rem;
+  width: 320px;
+  max-height: 400px;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.upload-manager-header {
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upload-manager-header .title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #e2e8f0;
+}
+
+.upload-manager-header .close-btn {
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+}
+
+.upload-manager-header .close-btn:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+
+.upload-manager-list {
+  padding: 0.5rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.upload-manager-item {
+  padding: 0.75rem;
+  border-radius: 8px;
+}
+
+.upload-manager-item .file-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 0.75rem;
+}
+
+.upload-manager-item .name {
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.upload-manager-item .percent {
+  color: #3b82f6;
+  font-weight: 700;
+}
+
+.progress-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #3b82f6;
+  transition: width 0.3s ease;
+}
+
+.progress-fill.completed {
+  background: #10b981;
+}
+
+.fade-slide-enter-active, .fade-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-slide-enter-from, .fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 4px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 2px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 </style>
