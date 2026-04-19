@@ -95,7 +95,7 @@ const getAvailableApps = () => {
     {
       id: 'jellyfin',
       name: 'Jellyfin',
-      description: 'Servidor de medios libre y gratuito. Alternativa open-source a Plex sin restricciones.',
+      description: 'El sistema de medios de software libre. Colecciona, gestiona y transmite tus archivos multimedia.',
       image: 'jellyfin/jellyfin:latest',
       icon: `${ICON_CDN}/jellyfin.png`,
       category: 'media',
@@ -107,6 +107,21 @@ const getAvailableApps = () => {
         '/media': DATA_DIR 
       },
       webPort: 8096
+    },
+    {
+      id: 'emby',
+      name: 'Emby Server',
+      description: 'Organiza y transmite tus videos, música y fotos a cualquier dispositivo. Potente y fácil de usar.',
+      image: 'emby/embyserver:latest',
+      icon: `${ICON_CDN}/emby.png`,
+      category: 'media',
+      developer: 'Emby LLC',
+      ports: { '8096/tcp': 8095, '8920/tcp': 8921 },
+      volumes: { 
+        '/config': '/opt/nubeos/appdata/emby/config', 
+        '/data': DATA_DIR 
+      },
+      webPort: 8095
     },
     {
       id: 'photoprism',
