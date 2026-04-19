@@ -173,19 +173,19 @@ const getAllFiles = (dirPath, arrayOfFiles) => {
 };
 
 // 7. Admin - Scan Libraries
-router.post('/admin/scan', authMiddleware, (req, res) => {
+router.post('/admin/scan', authMiddleware, async (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
   try {
     const libraries = db.prepare('SELECT * FROM eo_libraries').all();
     let newItems = 0;
 
-    libraries.forEach(lib => {
+    for (const lib of libraries) {
       const libPath = lib.path;
-      if (!fs.existsSync(libPath)) return;
+      if (!fs.existsSync(libPath)) continue;
 
       const allFiles = getAllFiles(libPath);
       
-      allFiles.forEach(filePath => {
+      for (const filePath of allFiles) {
         const file = path.basename(filePath);
         const ext = path.extname(file).toLowerCase();
         const isVideo = ['.mp4', '.mkv', '.webm', '.avi'].includes(ext);
@@ -264,9 +264,8 @@ router.post('/admin/scan', authMiddleware, (req, res) => {
             console.error('Error inserting media:', e.message);
           }
         }
-      });
-    });
-
+      }
+    }
     res.json({ success: true, newItems });
   } catch (error) {
     res.status(500).json({ error: error.message });
