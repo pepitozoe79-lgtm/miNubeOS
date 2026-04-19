@@ -72,10 +72,10 @@
                 </div>
                 <p class="eos-hero-desc">{{ item.description }}</p>
                 <div class="eos-hero-actions">
-                  <button class="eos-btn-primary">
+                  <button class="eos-btn-primary" @click="playMedia(heroItems[heroIndex])">
                     <Play :size="18" /> Reproducir
                   </button>
-                  <button class="eos-btn-secondary">
+                  <button class="eos-btn-secondary" @click="openMediaDetail(heroItems[heroIndex])">
                     <Info :size="18" /> Más Info
                   </button>
                 </div>
@@ -220,45 +220,49 @@
 
       </div>
 
-      <!-- Media Detail Modal -->
+      <!-- Settings / Admin Modal -->
       <Transition name="modal-fade">
-        <div v-if="selectedMedia" class="eos-modal-overlay" @click.self="selectedMedia = null">
-          <div class="eos-modal">
-            <button class="eos-modal-close" @click="selectedMedia = null"><X :size="20" /></button>
-            <div class="eos-modal-banner" :style="{ backgroundImage: `url(${selectedMedia.poster})` }">
-              <div class="eos-modal-banner-overlay"></div>
+        <div v-if="showSettings" class="eos-modal-overlay" @click.self="showSettings = false">
+          <div class="eos-modal settings-modal">
+            <header class="eos-modal-banner settings-header">
               <div class="eos-modal-banner-content">
-                <h2>{{ selectedMedia.title }}</h2>
-                <div class="eos-hero-meta">
-                  <span class="eos-rating-badge">{{ selectedMedia.rating || 'PG-13' }}</span>
-                  <span>{{ selectedMedia.duration || '2h 15m' }}</span>
-                  <span>{{ selectedMedia.genre }}</span>
-                </div>
+                <h2>Ajustes de EntertainmentOS</h2>
+                <p>Configura tus librerías y escanea contenido</p>
               </div>
-            </div>
+              <button class="eos-modal-close" @click="showSettings = false"><X :size="20" /></button>
+            </header>
+            
             <div class="eos-modal-body">
-              <p class="eos-modal-desc">{{ selectedMedia.description || 'Una experiencia cinematográfica intensa que explora los límites de la imaginación humana. Sumérgete en un viaje visual extraordinario que no olvidarás.' }}</p>
-              <div class="eos-modal-actions">
-                <button class="eos-btn-primary"><Play :size="18" /> Reproducir</button>
-                <button class="eos-btn-secondary"><Plus :size="18" /> Mi Lista</button>
-                <button class="eos-btn-icon"><Heart :size="18" /></button>
-                <button class="eos-btn-icon"><Share2 :size="18" /></button>
-              </div>
-              <div class="eos-modal-details">
-                <div class="eos-detail-row">
-                  <span class="eos-detail-label">Año</span>
-                  <span>{{ selectedMedia.year }}</span>
+              <div class="settings-section">
+                <h3><FolderPlus :size="16" /> Gestionar Librerías</h3>
+                <p class="section-desc">Añade carpetas locales de NubeOS para escanear películas y series.</p>
+                
+                <div class="lib-add-form">
+                  <input v-model="newLibPath" type="text" placeholder="Ruta de la carpeta (ej: C:/Peliculas)" />
+                  <button @click="addLibrary" class="eos-btn-primary">Añadir</button>
                 </div>
-                <div class="eos-detail-row">
-                  <span class="eos-detail-label">Género</span>
-                  <span>{{ selectedMedia.genre }}</span>
-                </div>
-                <div class="eos-detail-row">
-                  <span class="eos-detail-label">Calificación</span>
-                  <div class="eos-stars">
-                    <Star v-for="s in 5" :key="s" :size="14" :class="{ filled: s <= (selectedMedia.stars || 4) }" />
+
+                <div class="lib-list">
+                  <div v-for="lib in libraries" :key="lib.id" class="lib-item">
+                    <div class="lib-info">
+                      <div class="lib-name">{{ lib.name }}</div>
+                      <div class="lib-path">{{ lib.path }}</div>
+                    </div>
+                    <button @click="removeLibrary(lib.id)" class="lib-remove-btn"><Trash2 :size="14" /></button>
                   </div>
+                  <div v-if="libraries.length === 0" class="lib-empty">No hay librerías configuradas.</div>
                 </div>
+              </div>
+
+              <div class="settings-divider"></div>
+
+              <div class="settings-section">
+                <h3><RefreshCw :size="16" /> Escaneo de Contenido</h3>
+                <p class="section-desc">Busca nuevos archivos en todas las librerías configuradas.</p>
+                <button @click="scanLibraries" class="eos-btn-secondary" :disabled="scanning">
+                  <Loader2 v-if="scanning" class="spinning" :size="16" />
+                  <span v-else>Escanear Librerías</span>
+                </button>
               </div>
             </div>
           </div>
@@ -269,12 +273,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
-import {
-  Clapperboard, Home, Film, Tv, Music, Search, Bell, User, ChevronDown,
-  ChevronLeft, ChevronRight, Play, Info, Settings2, X, Plus, Heart,
-  Share2, Star
+  Share2, Star, RefreshCw, FolderPlus, Trash2, Loader2
 } from 'lucide-vue-next';
+import axios from 'axios';
+import { useDesktopStore } from '../stores/desktop';
+import { useNotificationStore } from '../stores/notification';
+
+const desktop = useDesktopStore();
+const notification = useNotificationStore();
 
 // --- Navigation ---
 const activeNav = ref('home');
@@ -350,16 +356,61 @@ const prevHero = () => {
 };
 
 // --- Media Data ---
-const allMedia = ref([
-  { title: 'Stellar Horizon', poster: '/entertainment/posters/stellar_horizon.png', year: '2026', genre: 'Sci-Fi', rating: 'PG-13', duration: '2h 46m', stars: 5, isNew: true, progress: 0 },
-  { title: 'Shadow Protocol', poster: '/entertainment/posters/shadow_protocol.png', year: '2026', genre: 'Thriller', rating: 'R', duration: '2h 10m', stars: 4, isNew: true, progress: 0 },
-  { title: 'Neon Vengeance', poster: '/entertainment/posters/neon_vengeance.png', year: '2025', genre: 'Acción', rating: 'PG-13', duration: '1h 58m', stars: 4, isNew: false, progress: 65 },
-  { title: 'The Abyss Below', poster: '/entertainment/posters/abyss_below.png', year: '2025', genre: 'Terror', rating: 'R', duration: '2h 05m', stars: 3, isNew: false, progress: 30 },
-  { title: 'Crimson Dynasty', poster: '/entertainment/posters/crimson_dynasty.png', year: '2025', genre: 'Fantasía', rating: 'PG-13', duration: '2h 35m', stars: 5, isNew: true, progress: 0 },
-  { title: 'The Last Frontier', poster: '/entertainment/posters/last_frontier.png', year: '2024', genre: 'Western', rating: 'PG-13', duration: '2h 22m', stars: 4, isNew: false, progress: 80 },
-  { title: 'Midnight Express', poster: '/entertainment/posters/midnight_express.png', year: '2024', genre: 'Thriller', rating: 'R', duration: '1h 50m', stars: 4, isNew: false, progress: 0 },
-  { title: 'Echo Chamber', poster: '/entertainment/posters/echo_chamber.png', year: '2026', genre: 'Psicológico', rating: 'R', duration: '2h 12m', stars: 5, isNew: true, progress: 0 },
-]);
+const allMedia = ref<any[]>([]);
+const loading = ref(false);
+
+const fetchCatalog = async () => {
+  loading.value = true;
+  try {
+    const res = await axios.get('/api/entertainment/catalog');
+    allMedia.value = res.data.map((m: any) => ({
+      ...m,
+      stars: m.stars || 5,
+      isNew: m.is_new === 1,
+      poster: m.poster_path ? `/api/entertainment/poster/${m.id}` : '/entertainment/posters/stellar_horizon.png',
+      banner: m.banner_path || '/entertainment/posters/hero_banner.png',
+      progress: m.progress ? (m.progress / 7200) * 100 : 0
+    }));
+  } catch (err) {
+    console.error('Error fetching catalog:', err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+const libraries = ref<any[]>([]);
+const newLibPath = ref('');
+const fetchLibraries = async () => {
+  try {
+    const res = await axios.get('/api/entertainment/admin/libraries');
+    libraries.value = res.data;
+  } catch (err) { /* ignore if not admin */ }
+};
+
+const addLibrary = async () => {
+  if (!newLibPath.value) return;
+  try {
+    await axios.post('/api/entertainment/admin/libraries', {
+      path: newLibPath.value,
+      name: newLibPath.value.split('/').pop() || 'Nueva Librería'
+    });
+    newLibPath.value = '';
+    fetchLibraries();
+    notification.success('Éxito', 'Librería añadida correctamente');
+  } catch (err) {
+    notification.error('Error', 'No se pudo añadir la librería');
+  }
+};
+
+const playMedia = (media: any) => {
+  if (!media.file_path) {
+    notification.error('Error', 'Este elemento no tiene un archivo de video asociado.');
+    return;
+  }
+  desktop.playVideo(media.file_path, media.title);
+  selectedMedia.value = null;
+};
+
 
 const seriesMedia = computed(() => [
   { title: 'Código Neural', poster: '/entertainment/posters/neon_vengeance.png', year: '2025', genre: 'Sci-Fi', stars: 5 },
@@ -370,16 +421,19 @@ const seriesMedia = computed(() => [
   { title: 'Ecos del Pasado', poster: '/entertainment/posters/echo_chamber.png', year: '2025', genre: 'Misterio', stars: 4 },
 ]);
 
-const musicTracks = ref([
-  { title: 'Nebulosa', artist: 'Astral Waves', color: 'linear-gradient(135deg, #667eea, #764ba2)' },
-  { title: 'Noctámbuloaaa', artist: 'Midnight Pulse', color: 'linear-gradient(135deg, #f093fb, #f5576c)' },
-  { title: 'Aurora Boreal', artist: 'Arctic Echoes', color: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
-  { title: 'Pulso Oscuro', artist: 'Dark Matter', color: 'linear-gradient(135deg, #0c3483, #a2b6df)' },
-  { title: 'Cristal Roto', artist: 'Shattered Glass', color: 'linear-gradient(135deg, #fa709a, #fee140)' },
-  { title: 'Horizonte', artist: 'Solar Drift', color: 'linear-gradient(135deg, #a18cd1, #fbc2eb)' },
-  { title: 'Eco Silente', artist: 'Void Walker', color: 'linear-gradient(135deg, #30cfd0, #330867)' },
-  { title: 'Supernova', artist: 'Cosmic Dust', color: 'linear-gradient(135deg, #e8198b, #c7eafd)' },
-]);
+const scanning = ref(false);
+const scanLibraries = async () => {
+  scanning.value = true;
+  try {
+    const res = await axios.post('/api/entertainment/admin/scan');
+    notification.success('Escaneo Finalizado', `${res.data.newItems} nuevos elementos encontrados.`);
+    fetchCatalog();
+  } catch (err) {
+    notification.error('Error', 'No se pudo realizar el escaneo');
+  } finally {
+    scanning.value = false;
+  }
+};
 
 const mediaSections = computed(() => [
   {
@@ -400,6 +454,30 @@ const mediaSections = computed(() => [
   }
 ]);
 
+const musicTracks = ref([
+  { title: 'Nebulosa', artist: 'Astral Waves', color: 'linear-gradient(135deg, #667eea, #764ba2)' },
+  { title: 'Noctámbulo', artist: 'Midnight Pulse', color: 'linear-gradient(135deg, #f093fb, #f5576c)' },
+  { title: 'Aurora Boreal', artist: 'Arctic Echoes', color: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
+  { title: 'Pulso Oscuro', artist: 'Dark Matter', color: 'linear-gradient(135deg, #0c3483, #a2b6df)' },
+  { title: 'Cristal Roto', artist: 'Shattered Glass', color: 'linear-gradient(135deg, #fa709a, #fee140)' },
+  { title: 'Horizonte', artist: 'Solar Drift', color: 'linear-gradient(135deg, #a18cd1, #fbc2eb)' },
+  { title: 'Eco Silente', artist: 'Void Walker', color: 'linear-gradient(135deg, #30cfd0, #330867)' },
+  { title: 'Supernova', artist: 'Cosmic Dust', color: 'linear-gradient(135deg, #e8198b, #c7eafd)' },
+]);
+};
+
+const removeLibrary = async (id: number) => {
+  if (!confirm('¿Seguro que deseas eliminar esta librería? No se borrarán los archivos, solo el acceso.')) return;
+  try {
+    await axios.delete(`/api/entertainment/admin/libraries/${id}`);
+    fetchLibraries();
+    notification.success('Eliminado', 'Librería eliminada');
+  } catch (err) {
+    notification.error('Error', 'No se pudo eliminar la librería');
+  }
+};
+
+
 // --- Genres Filter ---
 const genres = ['Todas', 'Sci-Fi', 'Thriller', 'Acción', 'Terror', 'Fantasía', 'Western', 'Psicológico'];
 const activeGenre = ref('Todas');
@@ -419,6 +497,8 @@ const openMediaDetail = (media: any) => {
 // --- Lifecycle ---
 onMounted(() => {
   startHeroAutoplay();
+  fetchCatalog();
+  fetchLibraries();
 });
 
 onUnmounted(() => {
@@ -1304,12 +1384,118 @@ onUnmounted(() => {
   color: #f59e0b;
 }
 
-/* ===== TRANSITIONS ===== */
-.modal-fade-enter-active { transition: all 0.35s ease; }
-.modal-fade-leave-active { transition: all 0.25s ease; }
-.modal-fade-enter-from { opacity: 0; }
-.modal-fade-enter-from .eos-modal { transform: scale(0.92) translateY(20px); opacity: 0; }
-.modal-fade-leave-to { opacity: 0; }
-.modal-fade-leave-to .eos-modal { transform: scale(0.95); opacity: 0; }
-.modal-fade-enter-to .eos-modal { transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+/* ===== SETTINGS MODAL ===== */
+.settings-modal {
+  max-width: 500px;
+}
+
+.settings-header {
+  height: 140px;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.settings-section h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: white;
+}
+
+.section-desc {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.lib-add-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.lib-add-form input {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  color: white;
+  font-size: 0.85rem;
+}
+
+.lib-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.lib-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+}
+
+.lib-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.lib-path {
+  font-size: 0.7rem;
+  color: #64748b;
+  margin-top: 0.1rem;
+}
+
+.lib-remove-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.lib-remove-btn:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.lib-empty {
+  text-align: center;
+  padding: 2rem;
+  font-size: 0.8rem;
+  color: #475569;
+  border: 2px dashed rgba(255,255,255,0.05);
+  border-radius: 12px;
+}
+
+.settings-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.05);
+  margin: 1.5rem 0;
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>

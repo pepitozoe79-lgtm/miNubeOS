@@ -39,6 +39,41 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS eo_media (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    type TEXT CHECK(type IN ('movie', 'series', 'music')) NOT NULL,
+    genre TEXT,
+    year INTEGER,
+    rating TEXT,
+    poster_path TEXT,
+    banner_path TEXT,
+    file_path TEXT UNIQUE NOT NULL,
+    stars INTEGER DEFAULT 5,
+    is_new INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS eo_progress (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    media_id INTEGER NOT NULL,
+    seconds INTEGER DEFAULT 0,
+    is_finished INTEGER DEFAULT 0,
+    last_watched DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(media_id) REFERENCES eo_media(id),
+    UNIQUE(user_id, media_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS eo_libraries (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    path TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 console.log('Connected to SQLite database at:', dbPath);
