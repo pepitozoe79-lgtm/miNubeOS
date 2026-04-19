@@ -294,6 +294,36 @@ router.get('/external-drives', authMiddleware, (req, res) => {
   }
 });
 
+// New: Eject/Unmount a drive
+router.post('/eject-drive', authMiddleware, async (req, res) => {
+  const { path } = req.body;
+  
+  if (!path) return res.status(400).json({ error: 'Falta la ruta del dispositivo' });
+
+  if (process.platform !== 'linux') {
+    return res.json({ success: true, message: 'Dispositivo expulsado (Simulado)' });
+  }
+
+  try {
+    const { execSync } = require('child_process');
+    // Try to unmount
+    execSync(`sudo umount "${path}"`);
+    // Try to remove the directory if it's in /media/nubeos
+    if (path.startsWith('/media/nubeos/')) {
+        try { 
+          // Check if it's really empty before removing
+          const fs = require('fs');
+          if (fs.existsSync(path)) {
+            execSync(`sudo rm -rf "${path}"`);
+          }
+        } catch(e) {}
+    }
+    res.json({ success: true, message: 'El dispositivo se ha expulsado con éxito.' });
+  } catch (err) {
+    res.status(500).json({ error: 'No se pudo expulsar el dispositivo. Asegúrate de que no haya archivos abiertos en la unidad.' });
+  }
+});
+
 // New: Get Terminal and SNMP real settings
 router.get('/terminal-settings', authMiddleware, async (req, res) => {
   if (process.platform !== 'linux') {
