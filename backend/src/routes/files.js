@@ -33,15 +33,15 @@ router.get('/list', authMiddleware, (req, res) => {
     // Auto-create Multimedia folders on demand if they don't exist physically
     if (!fs.existsSync(fullPath) && (relPath === 'Multimedia' || relPath.startsWith('Multimedia/'))) {
       fs.mkdirSync(fullPath, { recursive: true });
-      
-      // Ensure subfolders exist if we just created/entered Multimedia root
-      if (relPath === 'Multimedia') {
-        const { MULTIMEDIA_DIR } = require('../utils/fileHelper');
-        ['Peliculas', 'Series', 'Musica'].forEach(f => {
-          const p = path.join(MULTIMEDIA_DIR, f);
-          if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
-        });
-      }
+    }
+
+    // Ensure subfolders exist when entering Multimedia root
+    if (relPath === 'Multimedia') {
+      const { MULTIMEDIA_DIR } = require('../utils/fileHelper');
+      ['Peliculas', 'Series', 'Musica'].forEach(f => {
+        const p = path.join(MULTIMEDIA_DIR, f);
+        if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
+      });
     }
 
     const items = fs.readdirSync(fullPath, { withFileTypes: true });
