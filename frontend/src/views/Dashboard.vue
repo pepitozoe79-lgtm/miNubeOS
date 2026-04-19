@@ -123,6 +123,15 @@
                 <div class="storage-data">{{ formatGB(state.stats.details?.diskUsed || 0) }} / {{ formatGB(state.stats.details?.diskTotal || 0) }}</div>
               </div>
             </div>
+
+            <!-- External Drives in Widget -->
+            <div v-for="drive in state.externalDrives" :key="drive.id" class="storage-item external-storage-item mt-1">
+              <HardDrive :size="24" color="#f97316" />
+              <div class="storage-info">
+                <div class="storage-label">{{ drive.label }}</div>
+                <div class="storage-path">USB Montado</div>
+              </div>
+            </div>
           </div>
         </aside>
       </Transition>
@@ -200,6 +209,7 @@ const state = reactive({
   currentVersion: null as string | null,
   dashboardError: null as string | null,
   stats: { cpu: 0, ram: 0, disk: 0, hostname: '', ip: '', details: {} as any },
+  externalDrives: [] as any[],
   showPopup: false,
   desktopMenu: { show: false, x: 0, y: 0 }
 });
@@ -314,15 +324,17 @@ const fetchDrives = async () => {
   try {
     const res = await axios.get('/api/system/external-drives');
     const drives = res.data;
+    state.externalDrives = drives;
     
     // Convert drives to desktop icons
+    const screenWidth = window.innerWidth;
     const icons = drives.map((drive: any, index: number) => ({
       id: drive.id ? `drive-${drive.id}` : `drive-${index}`,
       label: drive.label || `Unidad (${drive.path})`,
       icon: 'HardDrive',
       color: 'orange',
-      x: 240, 
-      y: 20 + (index * 120),
+      x: screenWidth - 110, // Position on the right side
+      y: 20 + (index * 110),
       type: 'drive',
       path: drive.path
     }));
@@ -351,11 +363,13 @@ onMounted(() => {
   statsTimer = setInterval(fetchStats, 5000);
   drivesTimer = setInterval(fetchDrives, 10000);
   window.addEventListener('click', closeMenus);
+  window.addEventListener('resize', fetchDrives);
 });
 onUnmounted(() => { 
   clearInterval(statsTimer); 
   clearInterval(drivesTimer);
   window.removeEventListener('click', closeMenus);
+  window.removeEventListener('resize', fetchDrives);
 });
 </script>
 
@@ -448,6 +462,12 @@ onUnmounted(() => {
 .info-row { display: flex; justify-content: space-between; font-size: 0.75rem; }
 .info-row .label { color: #64748b; }
 .info-row .val { color: #e2e8f0; font-weight: 500; }
+
+.external-storage-item {
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.storage-path { font-size: 0.7rem; color: #f97316; font-weight: 600; }
 
 .time { font-size: 0.9rem; font-weight: 600; color: white; margin-left: 1rem; }
 
