@@ -39,6 +39,19 @@ router.get('/stream/:id', authMiddleware, (req, res) => {
     const fileSize = stat.size;
     const range = req.headers.range;
 
+    // Detect MIME type based on extension
+    const ext = path.extname(filePath).toLowerCase();
+    const mimeTypes = {
+      '.mp4': 'video/mp4',
+      '.mkv': 'video/x-matroska',
+      '.webm': 'video/webm',
+      '.avi': 'video/x-msvideo',
+      '.mp3': 'audio/mpeg',
+      '.wav': 'audio/wav',
+      '.flac': 'audio/flac'
+    };
+    const contentType = mimeTypes[ext] || 'video/mp4';
+
     if (range) {
       const parts = range.replace(/bytes=/, "").split("-");
       const start = parseInt(parts[0], 10);
@@ -49,14 +62,14 @@ router.get('/stream/:id', authMiddleware, (req, res) => {
         'Content-Range': `bytes ${start}-${end}/${fileSize}`,
         'Accept-Ranges': 'bytes',
         'Content-Length': chunksize,
-        'Content-Type': 'video/mp4',
+        'Content-Type': contentType,
       };
       res.writeHead(206, head);
       file.pipe(res);
     } else {
       const head = {
         'Content-Length': fileSize,
-        'Content-Type': 'video/mp4',
+        'Content-Type': contentType,
       };
       res.writeHead(200, head);
       fs.createReadStream(filePath).pipe(res);

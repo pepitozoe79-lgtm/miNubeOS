@@ -542,8 +542,10 @@ const fetchAdminData = async () => {
 };
 
 const playMedia = (m: any) => {
-  if (!m.file_path) return notification.error('Error', 'Archivo no encontrado');
-  desktop.playVideo(m.file_path, m.title, m.id, m.progress || 0);
+  const token = localStorage.getItem('nubeos_token');
+  const streamUrl = `/api/entertainment/stream/${m.id}?token=${token}`;
+  
+  desktop.playVideo(streamUrl, m.title, m.id, m.progress || 0);
   selectedMedia.value = null;
 };
 
