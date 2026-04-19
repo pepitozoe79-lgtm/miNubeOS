@@ -48,24 +48,38 @@ const onMouseMove = (e: MouseEvent) => {
   
   const deltaX = e.clientX - dragStartX;
   const deltaY = e.clientY - dragStartY;
-  
+
+  // Actualizar posicin visual inmediatamente
   currentX.value = initialIconX + deltaX;
   currentY.value = initialIconY + deltaY;
 };
 
-const onMouseUp = () => {
+const onMouseUp = (e: MouseEvent) => {
   if (!isDragging.value) return;
   
-  isDragging.value = false;
   window.removeEventListener('mousemove', onMouseMove);
   window.removeEventListener('mouseup', onMouseUp);
   
+  // Calcular si hubo movimiento real
+  const deltaX = e.clientX - dragStartX;
+  const deltaY = e.clientY - dragStartY;
+  const moved = Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5;
+
   // Snap to grid and save
   desktop.moveIcon(props.iconData.id, currentX.value, currentY.value);
   
   // Reset local current pos to state pos (which is snapped)
   currentX.value = desktop.desktopIcons[props.iconData.id].x;
   currentY.value = desktop.desktopIcons[props.iconData.id].y;
+
+  // Mantener isDragging en true un instante para que handleClick lo ignore
+  if (moved) {
+    setTimeout(() => {
+      isDragging.value = false;
+    }, 100);
+  } else {
+    isDragging.value = false;
+  }
 };
 
 const handleClick = () => {
