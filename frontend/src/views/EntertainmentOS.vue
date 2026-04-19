@@ -369,9 +369,8 @@
                 </div>
               </div>
             </div>
-          </div>
-        </template>
-      </div>
+          </template>
+        </div>
 
       <!-- Detail Modal -->
       <Transition name="modal-fade">
