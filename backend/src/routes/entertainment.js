@@ -139,6 +139,23 @@ router.delete('/admin/libraries/:id', authMiddleware, (req, res) => {
   }
 });
 
+// Helper for recursive file scanning
+const getAllFiles = (dirPath, arrayOfFiles) => {
+  const files = fs.readdirSync(dirPath);
+  arrayOfFiles = arrayOfFiles || [];
+
+  files.forEach(file => {
+    const fullPath = path.join(dirPath, file);
+    if (fs.statSync(fullPath).isDirectory()) {
+      arrayOfFiles = getAllFiles(fullPath, arrayOfFiles);
+    } else {
+      arrayOfFiles.push(fullPath);
+    }
+  });
+
+  return arrayOfFiles;
+};
+
 // 7. Admin - Scan Libraries
 router.post('/admin/scan', authMiddleware, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
@@ -150,14 +167,15 @@ router.post('/admin/scan', authMiddleware, (req, res) => {
       const libPath = lib.path;
       if (!fs.existsSync(libPath)) return;
 
-      const files = fs.readdirSync(libPath);
-      files.forEach(file => {
+      const allFiles = getAllFiles(libPath);
+      
+      allFiles.forEach(filePath => {
+        const file = path.basename(filePath);
         const ext = path.extname(file).toLowerCase();
         const isVideo = ['.mp4', '.mkv', '.webm', '.avi'].includes(ext);
         const isAudio = ['.mp3', '.wav', '.flac', '.aac'].includes(ext);
 
         if (isVideo || isAudio) {
-          const filePath = path.join(libPath, file);
           const fileNameNoExt = path.parse(file).name;
           const seriesMatch = fileNameNoExt.match(/S(\d+)E(\d+)|[S\s](\d+)E(\d+)|\s(\d+)x(\d+)/i);
           const isSeries = !!seriesMatch;
@@ -169,13 +187,10 @@ router.post('/admin/scan', authMiddleware, (req, res) => {
           let title = fileNameNoExt;
 
           if (isSeries) {
-            // Extract S and E (handling different formats)
             const s = seriesMatch[1] || seriesMatch[3] || seriesMatch[5];
             const e = seriesMatch[2] || seriesMatch[4] || seriesMatch[6];
             season = parseInt(s);
             episode = parseInt(e);
-            
-            // Series name is usually everything before the S01E01 part
             seriesName = fileNameNoExt.split(seriesMatch[0])[0].replace(/[._-]/g, ' ').trim();
             title = `${seriesName} - S${s}E${e}`;
           } else {
@@ -189,8 +204,10 @@ router.post('/admin/scan', authMiddleware, (req, res) => {
           const year = yearMatch ? parseInt(yearMatch[0].replace(/[()]/g, '')) : new Date().getFullYear();
           
           let posterPath = null;
+          // Check for posters in the SAME folder as the movie
+          const currentDir = path.dirname(filePath);
           ['.jpg', '.jpeg', '.png', '.webp'].forEach(imgExt => {
-            const potentialPoster = path.join(libPath, fileNameNoExt + imgExt);
+            const potentialPoster = path.join(currentDir, fileNameNoExt + imgExt);
             if (fs.existsSync(potentialPoster)) {
               posterPath = potentialPoster;
             }
@@ -199,11 +216,14 @@ router.post('/admin/scan', authMiddleware, (req, res) => {
           const genre = lib.name || 'Desconocido';
 
           try {
-            db.prepare(`
+            const result = db.prepare(`
               INSERT OR IGNORE INTO eo_media (title, series_name, season, episode, type, file_path, genre, year, poster_path, is_new)
               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
             `).run(title, seriesName, season, episode, type, filePath, genre, year, posterPath);
-            newItems++;
+            
+            if (result.changes > 0) {
+              newItems++;
+            }
           } catch (e) { 
             console.error('Error inserting media:', e.message);
           }
