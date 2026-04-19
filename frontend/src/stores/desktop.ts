@@ -30,7 +30,7 @@ export const useDesktopStore = defineStore('desktop', {
     const savedIcons = localStorage.getItem('nubeos_desktop_icons');
     const defaultIcons: Record<string, DesktopIcon> = {
       files: { id: 'files', label: 'Archivos', icon: 'Folder', color: 'blue', x: 20, y: 20 },
-      apps: { id: 'apps', label: 'App Center', icon: 'LayoutDashboard', color: 'purple', x: 20, y: 140 },
+      apps: { id: 'apps', label: 'App Center', icon: 'LayoutDashboard', color: 'purple', x: 130, y: 20 },
       monitor: { id: 'monitor', label: 'Monitor', icon: 'Activity', color: 'green', x: 20, y: 260 },
       admin: { id: 'admin', label: 'Panel Control', icon: 'Settings', color: 'grey', x: 20, y: 380 },
       terminal: { id: 'terminal', label: 'Terminal', icon: 'Terminal', color: 'dark', x: 20, y: 500 },
