@@ -289,50 +289,25 @@ export const useFileStore = defineStore('files', {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
-        if (file.size <= CHUNK_SIZE) {
-          const formData = new FormData();
-          formData.append('files', file);
+        // Usamos una función interna con reintentos para cada archivo
+        try {
+          if (file.size <= CHUNK_SIZE) {
+            await this.performUploadWithRetry(file, null);
+          } else {
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            const uploadId = Math.random().toString(36).substring(7) + Date.now();
 
-          try {
-            await axios.post(`/api/files/upload?path=${this.currentPath}`, formData, {
-              headers: { 'Content-Type': 'multipart/form-data' },
-              onUploadProgress: (p) => {
-                const percent = Math.round((p.loaded * 100) / (p.total || 1));
-                this.updateFileProgress(file.name, percent);
-              }
-            });
-          } catch (err) {
-            console.error(`Error subiendo ${file.name}:`, err);
-          }
-        } else {
-          const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-          const uploadId = Math.random().toString(36).substring(7) + Date.now();
+            for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+              const start = chunkIndex * CHUNK_SIZE;
+              const end = Math.min(start + CHUNK_SIZE, file.size);
+              const chunk = file.slice(start, end);
 
-          for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-            const start = chunkIndex * CHUNK_SIZE;
-            const end = Math.min(start + CHUNK_SIZE, file.size);
-            const chunk = file.slice(start, end);
-
-            const formData = new FormData();
-            formData.append('chunkIndex', chunkIndex.toString());
-            formData.append('totalChunks', totalChunks.toString());
-            formData.append('fileName', file.name);
-            formData.append('path', this.currentPath);
-            formData.append('uploadId', uploadId);
-            formData.append('chunk', chunk);
-
-            try {
-              await axios.post('/api/files/upload/chunk', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-              });
-
-              const percent = Math.round(((chunkIndex + 1) * 100) / totalChunks);
-              this.updateFileProgress(file.name, percent);
-            } catch (err) {
-              console.error(`Error en chunk ${chunkIndex} de ${file.name}:`, err);
-              break;
+              // Reintentar cada chunk individualmente
+              await this.performUploadWithRetry(file, { chunk, chunkIndex, totalChunks, uploadId });
             }
           }
+        } catch (err) {
+          console.error(`Fallo crítico tras múltiples reintentos para ${file.name}:`, err);
         }
       }
 
@@ -342,6 +317,46 @@ export const useFileStore = defineStore('files', {
         await this.fetchFiles(this.currentPath, false);
         await this.fetchFolderTree();
       }, 500);
+    },
+
+    async performUploadWithRetry(file: File, chunkData: any | null, retries = 3) {
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const formData = new FormData();
+          
+          if (!chunkData) {
+            // Carga normal
+            formData.append('files', file);
+            await axios.post(`/api/files/upload?path=${this.currentPath}`, formData, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+              onUploadProgress: (p) => {
+                const percent = Math.round((p.loaded * 100) / (p.total || 1));
+                this.updateFileProgress(file.name, percent);
+              }
+            });
+          } else {
+            // Carga por chunks
+            formData.append('chunkIndex', chunkData.chunkIndex.toString());
+            formData.append('totalChunks', chunkData.totalChunks.toString());
+            formData.append('fileName', file.name);
+            formData.append('path', this.currentPath);
+            formData.append('uploadId', chunkData.uploadId);
+            formData.append('chunk', chunkData.chunk);
+
+            await axios.post('/api/files/upload/chunk', formData, {
+              headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            const percent = Math.round(((chunkData.chunkIndex + 1) * 100) / chunkData.totalChunks);
+            this.updateFileProgress(file.name, percent);
+          }
+          return; // Éxito
+        } catch (err) {
+          if (attempt === retries) throw err;
+          console.warn(`Intento ${attempt + 1} fallido para ${file.name}, reintentando en 2s...`);
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
     },
 
     updateFileProgress(name: string, progress: number) {
