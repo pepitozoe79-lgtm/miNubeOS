@@ -5,6 +5,7 @@ const path = require('path');
 const db = require('../config/db');
 const { authMiddleware } = require('../middleware/auth');
 const { getSafePath } = require('../utils/fileHelper');
+const tmdbService = require('../services/tmdbService');
 
 const NUBEOS_ROOT = path.resolve(__dirname, '../../../..');
 
@@ -236,12 +237,25 @@ router.post('/admin/scan', authMiddleware, (req, res) => {
           });
 
           const genre = lib.name || 'Desconocido';
+          let bannerPath = null;
+          let description = null;
+          let rating = null;
+
+          // --- TMDB Scraper Integration ---
+          const tmdbData = await tmdbService.searchMedia(title, year, type);
+          if (tmdbData) {
+            title = tmdbData.title || title;
+            description = tmdbData.description;
+            rating = tmdbData.rating;
+            posterPath = tmdbData.posterPath || posterPath;
+            bannerPath = tmdbData.bannerPath;
+          }
 
           try {
             const result = db.prepare(`
-              INSERT OR IGNORE INTO eo_media (title, series_name, season, episode, type, file_path, genre, year, poster_path, is_new)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-            `).run(title, seriesName, season, episode, type, filePath, genre, year, posterPath);
+              INSERT OR IGNORE INTO eo_media (title, series_name, season, episode, type, file_path, genre, year, poster_path, banner_path, description, rating, is_new)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            `).run(title, seriesName, season, episode, type, filePath, genre, year, posterPath, bannerPath, description, rating);
             
             if (result.changes > 0) {
               newItems++;
@@ -344,6 +358,32 @@ router.get('/admin/browse-fs', authMiddleware, (req, res) => {
       folders,
       isRoot: currentPath === NUBEOS_ROOT
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 13. Admin - Get Configuration
+router.get('/admin/config', authMiddleware, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
+  try {
+    const apiKey = db.prepare("SELECT value FROM system_config WHERE key = 'tmdb_api_key'").get();
+    res.json({
+      tmdb_api_key: apiKey ? '********' + apiKey.value.slice(-4) : '',
+      has_key: !!apiKey
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 14. Admin - Update Configuration
+router.post('/admin/config', authMiddleware, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
+  try {
+    const { tmdb_api_key } = req.body;
+    db.prepare("INSERT OR REPLACE INTO system_config (key, value) VALUES ('tmdb_api_key', ?)").run(tmdb_api_key);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

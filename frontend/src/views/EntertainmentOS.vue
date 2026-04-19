@@ -205,10 +205,10 @@
             <header class="eos-admin-header">
               <h1><Settings2 :size="24" /> Panel de Administración</h1>
               <div class="admin-tabs">
-                <button v-for="tab in ['overview', 'media', 'libraries']" :key="tab" 
-                        :class="{ active: activeAdminTab === tab }" @click="activeAdminTab = tab">
-                  {{ tab === 'overview' ? 'Resumen' : tab === 'media' ? 'Gestión' : 'Librerías' }}
-                </button>
+                <button :class="{ active: activeAdminTab === 'overview' }" @click="activeAdminTab = 'overview'; fetchConfig()">Resumen</button>
+                <button :class="{ active: activeAdminTab === 'media' }" @click="activeAdminTab = 'media'">Gestión</button>
+                <button :class="{ active: activeAdminTab === 'libraries' }" @click="activeAdminTab = 'libraries'">Librerías</button>
+                <button :class="{ active: activeAdminTab === 'config' }" @click="activeAdminTab = 'config'; fetchConfig()">Configuración</button>
               </div>
             </header>
 
@@ -329,6 +329,43 @@
                     </div>
                   </div>
                 </div>
+
+                <!-- Global Configuration Tab -->
+                <div v-if="activeAdminTab === 'config'" class="admin-view animate-fade">
+                  <div class="eos-admin-banner">
+                    <div class="banner-content">
+                      <h2>Configuración del Sistema</h2>
+                      <p>Gestiona las conexiones con servicios externos de metadatos.</p>
+                    </div>
+                  </div>
+
+                  <div class="config-grid">
+                    <div class="config-card">
+                      <div class="config-card-header">
+                        <Settings2 :size="24" class="text-indigo-400" />
+                        <h3>The Movie Database (TMDB)</h3>
+                      </div>
+                      <div class="config-card-body">
+                        <p class="text-sm text-slate-400 mb-4">
+                          Ingresa tu clave de API de TMDB para descargar automáticamente posters, sinopsis y valoraciones de tus películas y series.
+                        </p>
+                        <div class="eos-field">
+                          <label>API Key (v3 auth)</label>
+                          <div class="input-with-action">
+                            <input v-model="tmdbKey" type="password" placeholder="Tu clave de API..." />
+                            <button @click="saveConfig" class="eos-btn-primary" :disabled="loading">
+                              <Loader2 v-if="loading" :size="18" class="animate-spin" />
+                              <span v-else>Guardar</span>
+                            </button>
+                          </div>
+                          <span v-if="configData.has_key" class="text-xs text-green-500 mt-2 block">
+                            ✓ Clave configurada correctamente: {{ configData.tmdb_api_key }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -438,6 +475,8 @@ const adminSearch = ref('');
 const newLibPath = ref('');
 const selectedLibType = ref('movie');
 const selectedMedia = ref<any>(null);
+const tmdbKey = ref('');
+const configData = ref<any>({});
 
 // Folder Browser State
 const showFolderPicker = ref(false);
@@ -538,7 +577,30 @@ const fetchAdminData = async () => {
     adminStats.value = stats.data;
     allAdminMedia.value = media.data;
     libraries.value = libs.data;
+    fetchConfig();
   } catch (err) { /* Not admin */ }
+};
+
+const fetchConfig = async () => {
+  try {
+    const res = await axios.get('/api/entertainment/admin/config');
+    configData.value = res.data;
+  } catch (err) {}
+};
+
+const saveConfig = async () => {
+  if (!tmdbKey.value) return;
+  loading.value = true;
+  try {
+    await axios.post('/api/entertainment/admin/config', { tmdb_api_key: tmdbKey.value });
+    notification.success('Éxito', 'Configuración guardada correctamente.');
+    tmdbKey.value = '';
+    fetchConfig();
+  } catch (err) {
+    notification.error('Error', 'No se pudo guardar la configuración.');
+  } finally {
+    loading.value = false;
+  }
 };
 
 const playMedia = (m: any) => {
@@ -740,6 +802,20 @@ th, td { padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,
 .lib-add-form-premium .input-group { flex: 1; display: flex; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
 .lib-type-select { background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 0.75rem; color: white; cursor: pointer; outline: none; }
 .lib-add-form-premium input { flex: 1; background: transparent; border: none; padding: 0.75rem 1rem; color: white; font-size: 0.9rem; }
+
+/* Config Styles */
+.config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 1.5rem; }
+.config-card { background: rgba(30, 41, 59, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 1.5rem; }
+.config-card-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+.config-card-header h3 { font-size: 1.1rem; color: white; margin: 0; }
+.input-with-action { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.input-with-action input { flex: 1; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 0.6rem 1rem; color: white; outline: none; }
+.eos-field label { font-size: 0.8rem; color: #94a3b8; font-weight: 500; }
+.text-indigo-400 { color: #818cf8; }
+.text-slate-400 { color: #94a3b8; }
+.text-xs { font-size: 0.75rem; }
+.animate-fade { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 .browse-btn { background: rgba(255,255,255,0.05); border: none; border-left: 1px solid rgba(255,255,255,0.1); color: #94a3b8; padding: 0 1rem; cursor: pointer; transition: all 0.2s; }
 .browse-btn:hover { color: white; background: rgba(255,255,255,0.1); }
 
