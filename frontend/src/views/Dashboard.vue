@@ -1,5 +1,5 @@
 <template>
-  <div class="desktop-container">
+  <div class="desktop-container" :style="{ backgroundImage: `url(${desktop.wallpaper})` }">
     <!-- Main Header / Top Bar -->
     <header class="top-bar">
       <div class="top-left">
@@ -257,6 +257,8 @@ onUnmounted(() => { clearInterval(statsTimer); });
   display: flex; flex-direction: column;
   overflow: hidden; position: relative;
   background-color: #0f172a;
+  background-size: cover;
+  background-position: center;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
