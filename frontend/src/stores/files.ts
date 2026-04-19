@@ -277,8 +277,11 @@ export const useFileStore = defineStore('files', {
     },
 
     async uploadFiles(files: FileList) {
+      // Convertir a Array inmediatamente para evitar que el navegador limpie la lista al resetear el input
+      const fileArray = Array.from(files);
+      
       this.uploading = true;
-      this.uploadingFiles = Array.from(files).map(f => ({
+      this.uploadingFiles = fileArray.map(f => ({
         name: f.name,
         progress: 0,
         size: f.size,
@@ -286,8 +289,8 @@ export const useFileStore = defineStore('files', {
 
       const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per chunk
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
 
         // Usamos una función interna con reintentos para cada archivo
         try {
