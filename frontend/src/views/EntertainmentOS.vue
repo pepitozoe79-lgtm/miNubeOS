@@ -271,7 +271,10 @@
                 <div class="admin-section-card">
                   <h3>Añadir Nueva Librería</h3>
                   <div class="lib-add-form">
-                    <input v-model="newLibPath" type="text" placeholder="Ruta: C:/Videos" />
+                    <input v-model="newLibPath" type="text" placeholder="Ruta: /mnt/videos" />
+                    <button @click="openFolderPicker" class="eos-btn-info" title="Explorar Sistema">
+                      <Folder :size="18" />
+                    </button>
                     <button @click="addLibrary" class="eos-btn-primary">Añadir</button>
                   </div>
                   <div class="lib-list">
@@ -326,6 +329,52 @@
           </div>
         </div>
       </Transition>
+
+      <!-- Folder Picker Modal -->
+      <Transition name="modal-fade">
+        <div v-if="showFolderPicker" class="eos-modal-overlay" @click.self="showFolderPicker = false">
+          <div class="eos-modal folder-browser-modal">
+            <header class="eos-modal-header-simple">
+              <h3>Seleccionar Carpeta</h3>
+              <button class="eos-modal-close-small" @click="showFolderPicker = false"><X :size="18" /></button>
+            </header>
+            
+            <div class="browser-path-bar">
+               <span class="path-label">Ruta actual:</span>
+               <span class="path-value">{{ currentBrowserPath }}</span>
+            </div>
+
+            <div class="browser-list">
+              <div v-if="browsingLoading" class="browser-loading">
+                <Loader2 class="spinning" :size="24" />
+              </div>
+              <template v-else>
+                <!-- Parent Directory -->
+                <div v-if="currentBrowserPath !== browserParent" 
+                     class="browser-item parent" @click="fetchFsDir(browserParent)">
+                  <Folder :size="18" />
+                  <span>.. (Subir nivel)</span>
+                </div>
+                <!-- Folders -->
+                <div v-for="folder in browserFolders" :key="folder.path" 
+                     class="browser-item" @click="selectBrowserFolder(folder.path)">
+                  <Folder :size="18" />
+                  <span>{{ folder.name }}</span>
+                  <ChevronRight :size="14" class="ml-auto" />
+                </div>
+                <div v-if="browserFolders.length === 0" class="browser-empty">
+                  Esta carpeta está vacía o no tiene subcarpetas.
+                </div>
+              </template>
+            </div>
+
+            <footer class="eos-modal-footer">
+              <button class="eos-btn-secondary" @click="showFolderPicker = false">Cancelar</button>
+              <button class="eos-btn-primary" @click="confirmFolder">Seleccionar esta carpeta</button>
+            </footer>
+          </div>
+        </div>
+      </Transition>
     </div>
   </div>
 </template>
@@ -334,7 +383,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import {
   Clapperboard, Home, Film, Tv, Music, Search, Bell, User, ChevronDown,
-  ChevronLeft, ChevronRight, Play, Info, Settings2, X, Plus, Star, Loader2, Trash2
+  ChevronLeft, ChevronRight, Play, Info, Settings2, X, Plus, Star, Loader2, Trash2, Folder
 } from 'lucide-vue-next';
 import axios from 'axios';
 import { useDesktopStore } from '../stores/desktop';
@@ -352,6 +401,13 @@ const searchQuery = ref('');
 const adminSearch = ref('');
 const newLibPath = ref('');
 const selectedMedia = ref<any>(null);
+
+// Folder Browser State
+const showFolderPicker = ref(false);
+const currentBrowserPath = ref('');
+const browserFolders = ref<any[]>([]);
+const browserParent = ref('');
+const browsingLoading = ref(false);
 
 const navItems = [
   { id: 'home', label: 'Inicio', icon: Home },
@@ -495,6 +551,35 @@ const deleteMedia = async (id: number) => {
 
 const editMedia = (media: any) => notification.info('Próximamente', 'Editor visual en desarrollo.');
 
+// Folder Browsing
+const openFolderPicker = () => {
+  showFolderPicker.value = true;
+  fetchFsDir(currentBrowserPath.value || '');
+};
+
+const fetchFsDir = async (path: string) => {
+  browsingLoading.value = true;
+  try {
+    const res = await axios.get('/api/entertainment/admin/browse-fs', { params: { path } });
+    browserFolders.value = res.data.folders;
+    currentBrowserPath.value = res.data.currentPath;
+    browserParent.value = res.data.parentPath;
+  } catch (err) {
+    notification.error('Error', 'No se pudo leer el directorio');
+  } finally {
+    browsingLoading.value = false;
+  }
+};
+
+const selectBrowserFolder = (folderPath: string) => {
+  fetchFsDir(folderPath);
+};
+
+const confirmFolder = () => {
+  newLibPath.value = currentBrowserPath.value;
+  showFolderPicker.value = false;
+};
+
 const prevHero = () => heroIndex.value = (heroIndex.value - 1 + heroItems.length) % heroItems.length;
 const nextHero = () => heroIndex.value = (heroIndex.value + 1) % heroItems.length;
 
@@ -572,6 +657,26 @@ th, td { padding: 1rem; text-align: left; border-bottom: 1px solid rgba(255,255,
 .modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.3s; }
 .modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 .mt-4 { margin-top: 1rem; }
+.mt-4 { margin-top: 1rem; }
+.ml-auto { margin-left: auto; }
+
+/* Folder Browser Modal */
+.folder-browser-modal { max-width: 500px; height: 80vh; display: flex; flex-direction: column; }
+.eos-modal-header-simple { padding: 1rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: space-between; align-items: center; }
+.eos-modal-header-simple h3 { font-size: 1rem; color: white; margin: 0; }
+.eos-modal-close-small { background: none; border: none; color: #64748b; cursor: pointer; }
+.browser-path-bar { padding: 0.75rem 1.5rem; background: rgba(0,0,0,0.2); font-size: 0.75rem; border-bottom: 1px solid rgba(255,255,255,0.03); display: flex; gap: 0.5rem; align-items: center; }
+.path-label { color: #64748b; }
+.path-value { color: #f59e0b; word-break: break-all; font-family: monospace; }
+.browser-list { flex: 1; overflow-y: auto; padding: 0.5rem; display: flex; flex-direction: column; gap: 2px; }
+.browser-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 8px; cursor: pointer; transition: all 0.2s; color: #cbd5e1; font-size: 0.85rem; }
+.browser-item:hover { background: rgba(255,255,255,0.05); color: white; }
+.browser-item.parent { color: #94a3b8; font-style: italic; }
+.browser-loading, .browser-empty { display: flex; align-items: center; justify-content: center; height: 100px; color: #64748b; font-size: 0.85rem; }
+.eos-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.05); display: flex; justify-content: flex-end; gap: 1rem; }
+.eos-btn-info { background: rgba(59, 130, 246, 0.1); color: #60a5fa; border: none; padding: 0.5rem; border-radius: 8px; cursor: pointer; }
+.eos-btn-info:hover { background: #3b82f6; color: white; }
+
 .spinning { animation: spin 1s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>

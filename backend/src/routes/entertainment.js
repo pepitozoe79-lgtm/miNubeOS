@@ -272,4 +272,35 @@ router.delete('/admin/media/:id', authMiddleware, (req, res) => {
   }
 });
 
+// 12. Admin - Browse System Files (Folders Only)
+router.get('/admin/browse-fs', authMiddleware, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
+  try {
+    // En Linux empezamos en / , en Windows detectamos la raíz del sistema o permitimos especificar.
+    // Usamos path.resolve para normalizar la ruta
+    const targetPath = req.query.path || (process.platform === 'win32' ? 'C:/' : '/');
+    
+    if (!fs.existsSync(targetPath)) {
+      return res.status(404).json({ error: 'Ruta no encontrada' });
+    }
+
+    const items = fs.readdirSync(targetPath, { withFileTypes: true });
+    const folders = items
+      .filter(item => item.isDirectory())
+      .map(item => ({
+        name: item.name,
+        path: path.join(targetPath, item.name).replace(/\\/g, '/')
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    res.json({
+      currentPath: targetPath.replace(/\\/g, '/'),
+      parentPath: path.dirname(targetPath).replace(/\\/g, '/'),
+      folders
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

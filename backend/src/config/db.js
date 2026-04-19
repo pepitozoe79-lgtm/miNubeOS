@@ -79,6 +79,35 @@ db.exec(`
   );
 `);
 
+// --- Multimedia Structure Initialization ---
+const multimediaBase = path.resolve(__dirname, '../../data/multimedia');
+const defaultLibs = [
+  { name: 'Películas', folder: 'Peliculas' },
+  { name: 'Series', folder: 'Series' },
+  { name: 'Música', folder: 'Musica' }
+];
+
+try {
+  defaultLibs.forEach(lib => {
+    const fullPath = path.join(multimediaBase, lib.folder).replace(/\\/g, '/');
+    
+    // 1. Create directory if missing
+    if (!fs.existsSync(fullPath)) {
+      fs.mkdirSync(fullPath, { recursive: true });
+      console.log(`📁 Carpeta multimedia creada: ${fullPath}`);
+    }
+
+    // 2. Register in DB if missing
+    const exists = db.prepare('SELECT id FROM eo_libraries WHERE path = ?').get(fullPath);
+    if (!exists) {
+      db.prepare('INSERT INTO eo_libraries (path, name) VALUES (?, ?)').run(fullPath, lib.name);
+      console.log(`✅ Librería por defecto mapeada en DB: ${lib.name}`);
+    }
+  });
+} catch (err) {
+  console.error('⚠️ Error inicializando estructura multimedia:', err.message);
+}
+
 console.log('Connected to SQLite database at:', dbPath);
 
 module.exports = db;
