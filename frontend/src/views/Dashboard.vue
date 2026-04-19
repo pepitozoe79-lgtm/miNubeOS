@@ -263,19 +263,19 @@ const fetchDrives = async () => {
     
     // Convert drives to desktop icons
     const icons = drives.map((drive: any, index: number) => ({
-      id: `drive-${drive.mountPoint.replace(/[^a-z0-9]/gi, '_')}`,
-      label: drive.label || `Disco (${drive.mountPoint})`,
+      id: drive.id ? `drive-${drive.id}` : `drive-${index}`,
+      label: drive.label || `Unidad (${drive.path})`,
       icon: 'HardDrive',
       color: 'orange',
-      x: 240, // Second column
+      x: 240, 
       y: 20 + (index * 120),
       type: 'drive',
-      path: drive.mountPoint
+      path: drive.path
     }));
 
     // Simple diff to notify new drives
     const currentDriveIds = Object.keys(desktop.dynamicIcons);
-    icons.forEach(icon => {
+    icons.forEach((icon: any) => {
       if (!currentDriveIds.includes(icon.id)) {
         notification.success('Nuevo Dispositivo', `Se ha montado ${icon.label}`);
       }
